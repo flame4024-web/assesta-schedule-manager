@@ -575,6 +575,55 @@ body {
   padding: 0;
 }
 
+.btn-outline.danger-text {
+  color: var(--danger);
+  border-color: rgba(239, 68, 68, 0.35);
+}
+
+.btn-outline.danger-text:hover {
+  background: rgba(239, 68, 68, 0.12);
+  border-color: var(--danger);
+  color: #f87171;
+}
+
+.bulk-row-actions {
+  display: inline-flex;
+  gap: 4px;
+  align-items: center;
+}
+
+.btn-mini {
+  padding: 3px 8px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  border: 1px solid var(--border-color);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text-secondary);
+  transition: all var(--transition-fast);
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.btn-mini:hover {
+  background: rgba(255, 255, 255, 0.12);
+  color: var(--text-primary);
+}
+
+.btn-mini.edit-mini:hover {
+  background: rgba(99, 102, 241, 0.18);
+  border-color: var(--accent-primary);
+  color: #c7d2fe;
+}
+
+.btn-mini.delete-mini:hover {
+  background: rgba(239, 68, 68, 0.18);
+  border-color: var(--danger);
+  color: #fca5a5;
+}
+
 /* ==========================================================================
    Bulk Import Section
    ========================================================================== */
@@ -643,6 +692,15 @@ body {
   justify-content: space-between;
   align-items: center;
   margin-bottom: 1rem;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.preview-actions {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  flex-wrap: wrap;
 }
 
 .progress-bar-container {

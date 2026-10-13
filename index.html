@@ -286,7 +286,22 @@
                 <input type="url" id="googleSheetUrlInput" class="input-control" 
                        value="https://docs.google.com/spreadsheets/d/1Vky8mgV1EMOzgAJQXfzcrrKbryddaKqxNHDUZ8opyes/edit" 
                        placeholder="https://docs.google.com/spreadsheets/d/...">
-                <button type="button" class="btn btn-secondary" id="fetchSheetBtn">시트 불러오기</button>
+                <button type="button" class="btn btn-outline" id="openSheetBtn" title="새 탭에서 스프레드시트 열기">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+                    <polyline points="15 3 21 3 21 9"></polyline>
+                    <line x1="10" y1="14" x2="21" y2="3"></line>
+                  </svg>
+                  시트 열기 ↗
+                </button>
+                <button type="button" class="btn btn-primary" id="fetchSheetBtn">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                    <polyline points="7 10 12 15 17 10"></polyline>
+                    <line x1="12" y1="15" x2="12" y2="3"></line>
+                  </svg>
+                  시트 불러오기
+                </button>
               </div>
             </div>
 
@@ -310,7 +325,14 @@
               <h4>등록 대상 일정 미리보기 (<span id="previewCount">0</span>건)</h4>
               <div class="preview-actions">
                 <button class="btn btn-outline btn-sm" id="selectAllRowsBtn">전체 선택</button>
-                <button class="btn btn-primary" id="startBulkRegisterBtn">
+                <button class="btn btn-outline btn-sm danger-text" id="deleteSelectedRowsBtn" title="선택한 항목들을 목록에서 삭제합니다">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="3 6 5 6 21 6"></polyline>
+                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                  </svg>
+                  선택 행 삭제
+                </button>
+                <button class="btn btn-primary btn-sm" id="startBulkRegisterBtn">
                   선택한 <span id="selectedCount">0</span>건 인트라넷 일괄 등록 실행
                 </button>
               </div>
@@ -327,13 +349,14 @@
                 <thead>
                   <tr>
                     <th width="40"><input type="checkbox" id="checkAllBoxes" checked></th>
-                    <th>일자</th>
-                    <th>시간</th>
-                    <th>구분</th>
+                    <th width="105">일자</th>
+                    <th width="115">시간</th>
+                    <th width="85">구분</th>
                     <th>제목</th>
                     <th>내용</th>
-                    <th>참조</th>
-                    <th>상태</th>
+                    <th width="110">참조</th>
+                    <th width="65">상태</th>
+                    <th width="100">관리</th>
                   </tr>
                 </thead>
                 <tbody id="bulkPreviewTbody">
@@ -432,6 +455,69 @@
         </div>
         <div class="modal-body" id="modalBody">
           <!-- 상세 폼 동적 주입 -->
+        </div>
+      </div>
+    </div>
+
+    <!-- 모달: 불러온 일정 수정 -->
+    <div class="modal-backdrop" id="bulkEditModal" style="display:none;">
+      <div class="modal-box glass-card">
+        <div class="modal-header">
+          <h3>불러온 일정 수정</h3>
+          <button class="modal-close-btn" id="bulkEditCloseBtn">&times;</button>
+        </div>
+        <div class="modal-body">
+          <form id="bulkEditForm">
+            <input type="hidden" id="editBulkId">
+            <div class="form-row grid-3">
+              <div class="form-group">
+                <label for="editBulkDate">일자 <span class="req">*</span></label>
+                <input type="date" id="editBulkDate" class="input-control" required>
+              </div>
+              <div class="form-group">
+                <label for="editBulkStartTime">시작 시간 <span class="req">*</span></label>
+                <input type="time" id="editBulkStartTime" class="input-control" required>
+              </div>
+              <div class="form-group">
+                <label for="editBulkEndTime">종료 시간 <span class="req">*</span></label>
+                <input type="time" id="editBulkEndTime" class="input-control" required>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label for="editBulkPlace">구분 <span class="req">*</span></label>
+              <select id="editBulkPlace" class="input-control" required>
+                <option value="9">프로젝트 (9)</option>
+                <option value="3">업무 (3)</option>
+                <option value="1">내부미팅 (1)</option>
+                <option value="2">외부미팅 (2)</option>
+                <option value="10">내부교육 (10)</option>
+                <option value="4">외부교육 (4)</option>
+                <option value="8">근태 (8)</option>
+                <option value="11">기타 (11)</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label for="editBulkSubject">일정 제목 <span class="req">*</span></label>
+              <input type="text" id="editBulkSubject" class="input-control" required>
+            </div>
+
+            <div class="form-group">
+              <label for="editBulkCc">참조자 (쉼표 구분)</label>
+              <input type="text" id="editBulkCc" class="input-control" placeholder="예: 권민섭, 홍길동">
+            </div>
+
+            <div class="form-group">
+              <label for="editBulkContent">세부 내용</label>
+              <textarea id="editBulkContent" class="input-control textarea-control" rows="4"></textarea>
+            </div>
+
+            <div class="form-actions">
+              <button type="button" class="btn btn-secondary" id="bulkEditCancelBtn">취소</button>
+              <button type="submit" class="btn btn-primary">변경사항 저장</button>
+            </div>
+          </form>
         </div>
       </div>
     </div>

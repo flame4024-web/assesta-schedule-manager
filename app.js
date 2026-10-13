@@ -94,6 +94,7 @@
 
     // 일괄 등록
     googleSheetUrlInput: document.getElementById('googleSheetUrlInput'),
+    openSheetBtn: document.getElementById('openSheetBtn'),
     fetchSheetBtn: document.getElementById('fetchSheetBtn'),
     csvDropzone: document.getElementById('csvDropzone'),
     csvFileInput: document.getElementById('csvFileInput'),
@@ -103,6 +104,7 @@
     bulkPreviewTbody: document.getElementById('bulkPreviewTbody'),
     checkAllBoxes: document.getElementById('checkAllBoxes'),
     selectAllRowsBtn: document.getElementById('selectAllRowsBtn'),
+    deleteSelectedRowsBtn: document.getElementById('deleteSelectedRowsBtn'),
     startBulkRegisterBtn: document.getElementById('startBulkRegisterBtn'),
     bulkProgressBar: document.getElementById('bulkProgressBar'),
     bulkProgressFill: document.getElementById('bulkProgressFill'),
@@ -126,6 +128,18 @@
     modalTitle: document.getElementById('modalTitle'),
     modalBody: document.getElementById('modalBody'),
     modalCloseBtn: document.getElementById('modalCloseBtn'),
+    bulkEditModal: document.getElementById('bulkEditModal'),
+    bulkEditCloseBtn: document.getElementById('bulkEditCloseBtn'),
+    bulkEditCancelBtn: document.getElementById('bulkEditCancelBtn'),
+    bulkEditForm: document.getElementById('bulkEditForm'),
+    editBulkId: document.getElementById('editBulkId'),
+    editBulkDate: document.getElementById('editBulkDate'),
+    editBulkStartTime: document.getElementById('editBulkStartTime'),
+    editBulkEndTime: document.getElementById('editBulkEndTime'),
+    editBulkPlace: document.getElementById('editBulkPlace'),
+    editBulkSubject: document.getElementById('editBulkSubject'),
+    editBulkCc: document.getElementById('editBulkCc'),
+    editBulkContent: document.getElementById('editBulkContent'),
     toastContainer: document.getElementById('toastContainer')
   };
 
@@ -636,26 +650,86 @@
     }
   }
 
+  // --- HTML 문자열 이스케이프 유틸 ---
+  function escapeHtml(str) {
+    if (!str) return '';
+    return String(str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
+  }
+
   // --- 다건 일괄 등록 (CSV / Google Sheets) ---
+  // RFC 4180 호환 CSV 파서: 따옴표 내부의 줄바꿈(\n) 및 쉼표(,) 보존
   function parseCSV(text) {
-    const lines = text.split(/\r?\n/).filter(line => line.trim().length > 0);
-    if (lines.length < 2) return [];
+    if (!text || !text.trim()) return [];
 
-    const headers = lines[0].split(',').map(h => h.trim().replace(/^["']|["']$/g, ''));
     const rows = [];
+    let currentRow = [];
+    let currentField = '';
+    let insideQuotes = false;
 
-    for (let i = 1; i < lines.length; i++) {
-      // 콤마 구분자 처리 (따옴표 내부 콤마 보호)
-      const values = lines[i].split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/).map(v => v.trim().replace(/^["']|["']$/g, ''));
-      if (values.length >= 4) {
-        const rowObj = {};
-        headers.forEach((h, idx) => {
-          rowObj[h] = values[idx] || '';
-        });
-        rows.push(rowObj);
+    // 개행문자 정규화 (\r\n -> \n)
+    const normalized = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+
+    for (let i = 0; i < normalized.length; i++) {
+      const char = normalized[i];
+      const nextChar = normalized[i + 1];
+
+      if (char === '"') {
+        if (insideQuotes && nextChar === '"') {
+          // 따옴표 이스케이프 ("")
+          currentField += '"';
+          i++; // 다음 따옴표 건너뜀
+        } else {
+          insideQuotes = !insideQuotes;
+        }
+      } else if (char === ',' && !insideQuotes) {
+        currentRow.push(currentField.trim());
+        currentField = '';
+      } else if (char === '\n' && !insideQuotes) {
+        currentRow.push(currentField.trim());
+        if (currentRow.length > 0 && currentRow.some(field => field.length > 0)) {
+          rows.push(currentRow);
+        }
+        currentRow = [];
+        currentField = '';
+      } else {
+        currentField += char;
       }
     }
-    return rows;
+
+    if (currentField.length > 0 || currentRow.length > 0) {
+      currentRow.push(currentField.trim());
+      if (currentRow.some(field => field.length > 0)) {
+        rows.push(currentRow);
+      }
+    }
+
+    if (rows.length < 2) return [];
+
+    // 헤더 정제
+    const headers = rows[0].map(h => h.trim().replace(/^["']|["']$/g, ''));
+    const result = [];
+
+    for (let i = 1; i < rows.length; i++) {
+      const values = rows[i];
+      const rowObj = {};
+      headers.forEach((h, idx) => {
+        rowObj[h] = values[idx] || '';
+      });
+
+      // 필수값 검증: 일자 또는 제목 중 하나라도 있어야 유효 데이터로 간주
+      const dateVal = rowObj['일자'] || rowObj['date'] || '';
+      const subjectVal = rowObj['일정제목'] || rowObj['제목'] || rowObj['subject'] || '';
+      if (dateVal || subjectVal) {
+        result.push(rowObj);
+      }
+    }
+
+    return result;
   }
 
   function displayBulkPreview(rows) {
@@ -665,12 +739,12 @@
       const eTime = r['종료시간'] || r['endTime'] || '18:00';
       const placeText = r['구분'] || r['place'] || '프로젝트';
       const placeCode = PLACE_NAME_TO_CODE[placeText] || '9';
-      const subject = r['제목'] || r['subject'] || '';
-      const content = r['내용'] || r['content'] || '';
-      const ccAddr = r['참조'] || r['ccAddr'] || '';
+      const subject = r['일정제목'] || r['제목'] || r['subject'] || '';
+      const content = r['세부내용'] || r['내용'] || r['content'] || '';
+      const ccAddr = r['참조자'] || r['참조'] || r['ccAddr'] || '';
 
       return {
-        id: index,
+        id: 'bulk_' + Date.now() + '_' + index,
         date,
         startTime: sTime,
         endTime: eTime,
@@ -684,14 +758,22 @@
       };
     });
 
-    elements.previewCount.textContent = state.bulkList.length;
-    elements.selectedCount.textContent = state.bulkList.length;
     renderBulkTable();
     elements.bulkPreviewSection.style.display = 'block';
   }
 
   function renderBulkTable() {
     elements.bulkPreviewTbody.innerHTML = '';
+    elements.previewCount.textContent = state.bulkList.length;
+    updateSelectedCount();
+
+    if (state.bulkList.length === 0) {
+      elements.bulkPreviewTbody.innerHTML = `
+        <tr><td colspan="9" class="text-center py-4" style="color:var(--text-muted);">등록할 일정이 없습니다.</td></tr>
+      `;
+      return;
+    }
+
     state.bulkList.forEach(item => {
       const tr = document.createElement('tr');
       const statusBadge = item.status === 'success' 
@@ -701,28 +783,137 @@
         : '<span class="status-badge pending">대기</span>';
 
       tr.innerHTML = `
-        <td><input type="checkbox" data-id="${item.id}" ${item.selected ? 'checked' : ''}></td>
-        <td>${item.date}</td>
-        <td>${item.startTime}~${item.endTime}</td>
-        <td><span class="status-badge pending">${item.placeText}</span></td>
-        <td><strong>${item.subject}</strong></td>
-        <td>${item.content}</td>
-        <td>${item.ccAddr}</td>
+        <td><input type="checkbox" class="bulk-row-check" data-id="${item.id}" ${item.selected ? 'checked' : ''}></td>
+        <td>${escapeHtml(item.date) || '-'}</td>
+        <td>${escapeHtml(item.startTime)}~${escapeHtml(item.endTime)}</td>
+        <td><span class="status-badge pending">${escapeHtml(item.placeText)}</span></td>
+        <td><strong>${escapeHtml(item.subject)}</strong></td>
+        <td style="max-width:240px; white-space:pre-wrap; font-size:0.8rem; color:var(--text-secondary);">${escapeHtml(item.content)}</td>
+        <td style="font-size:0.8rem;">${escapeHtml(item.ccAddr)}</td>
         <td>${statusBadge}</td>
+        <td>
+          <div class="bulk-row-actions">
+            <button type="button" class="btn-mini edit-mini" title="수정" data-id="${item.id}">수정</button>
+            <button type="button" class="btn-mini delete-mini" title="삭제" data-id="${item.id}">삭제</button>
+          </div>
+        </td>
       `;
 
-      tr.querySelector('input[type="checkbox"]').addEventListener('change', (e) => {
+      tr.querySelector('.bulk-row-check').addEventListener('change', (e) => {
         item.selected = e.target.checked;
         updateSelectedCount();
+        syncCheckAllBoxes();
+      });
+
+      tr.querySelector('.edit-mini').addEventListener('click', () => {
+        openBulkEditModal(item);
+      });
+
+      tr.querySelector('.delete-mini').addEventListener('click', () => {
+        removeBulkRow(item.id);
       });
 
       elements.bulkPreviewTbody.appendChild(tr);
     });
+
+    syncCheckAllBoxes();
+  }
+
+  function syncCheckAllBoxes() {
+    if (!elements.checkAllBoxes) return;
+    if (state.bulkList.length === 0) {
+      elements.checkAllBoxes.checked = false;
+      return;
+    }
+    const allChecked = state.bulkList.every(item => item.selected);
+    elements.checkAllBoxes.checked = allChecked;
   }
 
   function updateSelectedCount() {
     const count = state.bulkList.filter(item => item.selected).length;
     elements.selectedCount.textContent = count;
+  }
+
+  // 불러온 일정 단건 삭제 (목록에서 제외)
+  function removeBulkRow(id) {
+    const item = state.bulkList.find(b => b.id === id);
+    const title = item ? item.subject : '해당 일정';
+    if (!confirm(`[${title}] 일정을 일괄 등록 목록에서 삭제(제외)하시겠습니까?`)) {
+      return;
+    }
+    state.bulkList = state.bulkList.filter(b => b.id !== id);
+    renderBulkTable();
+    showToast('일정이 목록에서 삭제되었습니다.', 'info');
+  }
+
+  // 선택한 일정 일괄 삭제
+  function deleteSelectedBulkRows() {
+    const selectedItems = state.bulkList.filter(b => b.selected);
+    if (selectedItems.length === 0) {
+      showToast('삭제할 대상 일정이 선택되지 않았습니다.', 'warning');
+      return;
+    }
+    if (!confirm(`선택한 ${selectedItems.length}개의 일정을 일괄 등록 목록에서 삭제(제외)하시겠습니까?`)) {
+      return;
+    }
+    state.bulkList = state.bulkList.filter(b => !b.selected);
+    renderBulkTable();
+    showToast(`${selectedItems.length}개 일정이 목록에서 삭제되었습니다.`, 'info');
+  }
+
+  // 불러온 일정 수정 모달 열기
+  function openBulkEditModal(item) {
+    elements.editBulkId.value = item.id;
+    elements.editBulkDate.value = item.date || '';
+    elements.editBulkStartTime.value = item.startTime || '09:00';
+    elements.editBulkEndTime.value = item.endTime || '18:00';
+    elements.editBulkPlace.value = item.place || '9';
+    elements.editBulkSubject.value = item.subject || '';
+    elements.editBulkCc.value = item.ccAddr || '';
+    elements.editBulkContent.value = item.content || '';
+
+    elements.bulkEditModal.style.display = 'flex';
+  }
+
+  function closeBulkEditModal() {
+    elements.bulkEditModal.style.display = 'none';
+  }
+
+  function handleBulkEditSubmit(e) {
+    e.preventDefault();
+    const id = elements.editBulkId.value;
+    const item = state.bulkList.find(b => b.id === id);
+    if (!item) {
+      showToast('수정 대상 일정을 찾을 수 없습니다.', 'error');
+      closeBulkEditModal();
+      return;
+    }
+
+    const placeCode = elements.editBulkPlace.value;
+    const placeOption = elements.editBulkPlace.querySelector(`option[value="${placeCode}"]`);
+    const placeText = placeOption ? placeOption.textContent.split(' ')[0] : '프로젝트';
+
+    item.date = elements.editBulkDate.value;
+    item.startTime = elements.editBulkStartTime.value;
+    item.endTime = elements.editBulkEndTime.value;
+    item.place = placeCode;
+    item.placeText = placeText;
+    item.subject = elements.editBulkSubject.value.trim();
+    item.ccAddr = elements.editBulkCc.value.trim();
+    item.content = elements.editBulkContent.value.trim();
+
+    closeBulkEditModal();
+    renderBulkTable();
+    showToast('일정 내용이 성공적으로 수정되었습니다.', 'success');
+  }
+
+  // 스프레드시트 링크 열기 버튼 핸들러
+  function handleOpenGoogleSheet() {
+    let url = elements.googleSheetUrlInput.value.trim();
+    if (!url) {
+      url = 'https://docs.google.com/spreadsheets/d/1Vky8mgV1EMOzgAJQXfzcrrKbryddaKqxNHDUZ8opyes/edit';
+    }
+    window.open(url, '_blank');
   }
 
   async function handleFetchGoogleSheet() {
@@ -977,6 +1168,9 @@
 
 
     // 다건 일괄 등록 이벤트
+    if (elements.openSheetBtn) {
+      elements.openSheetBtn.addEventListener('click', handleOpenGoogleSheet);
+    }
     elements.fetchSheetBtn.addEventListener('click', handleFetchGoogleSheet);
 
     elements.csvDropzone.addEventListener('click', () => elements.csvFileInput.click());
@@ -1029,7 +1223,27 @@
       updateSelectedCount();
     });
 
+    if (elements.deleteSelectedRowsBtn) {
+      elements.deleteSelectedRowsBtn.addEventListener('click', deleteSelectedBulkRows);
+    }
+
     elements.startBulkRegisterBtn.addEventListener('click', startBulkRegister);
+
+    // 벌크 수정 모달 이벤트
+    if (elements.bulkEditForm) {
+      elements.bulkEditForm.addEventListener('submit', handleBulkEditSubmit);
+    }
+    if (elements.bulkEditCloseBtn) {
+      elements.bulkEditCloseBtn.addEventListener('click', closeBulkEditModal);
+    }
+    if (elements.bulkEditCancelBtn) {
+      elements.bulkEditCancelBtn.addEventListener('click', closeBulkEditModal);
+    }
+    if (elements.bulkEditModal) {
+      elements.bulkEditModal.addEventListener('click', (e) => {
+        if (e.target === elements.bulkEditModal) closeBulkEditModal();
+      });
+    }
 
     // 검색 & 관리
     elements.searchKeywordInput.addEventListener('input', renderManageTable);
