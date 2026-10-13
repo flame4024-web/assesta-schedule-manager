@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="ko" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>어세스타 인트라넷 캘린더 매니저 | ASSESTA Calendar</title>
+  <meta name="description" content="어세스타 인트라넷 캘린더 일정 간편 등록, 구글 시트 일괄 등록, 검색, 수정, 삭제 통합 웹 애플리케이션">
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://cdn.jsdelivr.net">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="app-container">
+    <!-- Header -->
+    <header class="app-header">
+      <div class="brand-area">
+        <div class="brand-icon">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+            <line x1="16" y1="2" x2="16" y2="6"></line>
+            <line x1="8" y1="2" x2="8" y2="6"></line>
+            <line x1="3" y1="10" x2="21" y2="10"></line>
+          </svg>
+        </div>
+        <div>
+          <h1 class="brand-title">어세스타 캘린더 매니저</h1>
+          <p class="brand-subtitle">it.assesta.com 인트라넷 일정 통합 자동화</p>
+        </div>
+      </div>
+
+      <!-- Quick Status & Actions -->
+      <div class="header-actions">
+        <div class="session-badge" id="sessionStatusBadge">
+          <span class="status-dot"></span>
+          <span id="sessionStatusText">연결 대기</span>
+        </div>
+        <button class="theme-toggle-btn" id="themeToggleBtn" aria-label="테마 전환" title="다크/라이트 모드">
+          <svg class="sun-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="5"></circle>
+            <line x1="12" y1="1" x2="12" y2="3"></line>
+            <line x1="12" y1="21" x2="12" y2="23"></line>
+            <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+            <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+            <line x1="1" y1="12" x2="3" y2="12"></line>
+            <line x1="21" y1="12" x2="23" y2="12"></line>
+            <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+            <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+          </svg>
+          <svg class="moon-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+          </svg>
+        </button>
+      </div>
+    </header>
+
+    <!-- Navigation Tabs -->
+    <nav class="nav-tabs" role="tablist">
+      <button class="nav-tab active" data-tab="calendarTab" id="tabBtnCalendar">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+          <line x1="16" y1="2" x2="16" y2="6"></line>
+          <line x1="8" y1="2" x2="8" y2="6"></line>
+          <line x1="3" y1="10" x2="21" y2="10"></line>
+        </svg>
+        월간 캘린더
+      </button>
+      <button class="nav-tab" data-tab="singleRegisterTab" id="tabBtnSingle">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="10"></circle>
+          <line x1="12" y1="8" x2="12" y2="16"></line>
+          <line x1="8" y1="12" x2="16" y2="12"></line>
+        </svg>
+        개별 일정 간편등록
+      </button>
+      <button class="nav-tab" data-tab="bulkRegisterTab" id="tabBtnBulk">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+          <polyline points="14 2 14 8 20 8"></polyline>
+          <line x1="12" y1="18" x2="12" y2="12"></line>
+          <line x1="9" y1="15" x2="15" y2="15"></line>
+        </svg>
+        구글 시트 / 파일 일괄등록
+      </button>
+      <button class="nav-tab" data-tab="manageTab" id="tabBtnManage">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polyline points="9 11 12 14 22 4"></polyline>
+          <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path>
+        </svg>
+        일정 검색 및 관리
+      </button>
+      <button class="nav-tab" data-tab="settingsTab" id="tabBtnSettings">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="3"></circle>
+          <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+        </svg>
+        환경 설정
+      </button>
+    </nav>
+
+    <!-- Main Content Panes -->
+    <main class="app-main">
+      <!-- 1. 월간 캘린더 탭 -->
+      <section class="tab-pane active" id="calendarTab">
+        <div class="calendar-controls glass-card">
+          <div class="calendar-nav">
+            <button class="btn btn-secondary btn-icon" id="calPrevMonthBtn" title="이전 달">◀</button>
+            <h2 class="current-month-display" id="calCurrentMonthText">2026년 10월</h2>
+            <button class="btn btn-secondary btn-icon" id="calNextMonthBtn" title="다음 달">▶</button>
+            <button class="btn btn-outline" id="calTodayBtn">오늘</button>
+          </div>
+          <div class="calendar-actions">
+            <button class="btn btn-secondary" id="calRefreshBtn">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/>
+              </svg>
+              새로고침
+            </button>
+            <button class="btn btn-primary" id="calQuickAddBtn">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="12" y1="5" x2="12" y2="19"></line>
+                <line x1="5" y1="12" x2="19" y2="12"></line>
+              </svg>
+              새 일정 등록
+            </button>
+          </div>
+        </div>
+
+        <div class="calendar-grid-container glass-card">
+          <div class="calendar-weekdays">
+            <div class="weekday sun">일</div>
+            <div class="weekday">월</div>
+            <div class="weekday">화</div>
+            <div class="weekday">수</div>
+            <div class="weekday">목</div>
+            <div class="weekday">금</div>
+            <div class="weekday sat">토</div>
+          </div>
+          <div class="calendar-days-grid" id="calendarDaysGrid">
+            <!-- 날짜 셀이 JS로 동적 생성됩니다 -->
+          </div>
+        </div>
+      </section>
+
+      <!-- 2. 개별 일정 간편등록 탭 -->
+      <section class="tab-pane" id="singleRegisterTab">
+        <div class="form-container glass-card">
+          <div class="card-header">
+            <h3>단건 일정 등록</h3>
+            <p class="card-desc">it.assesta.com 인트라넷 캘린더에 일정을 즉시 등록합니다.</p>
+          </div>
+
+          <form id="singleRegisterForm">
+            <div class="form-row grid-3">
+              <div class="form-group">
+                <label for="regDate">일자 <span class="req">*</span></label>
+                <input type="date" id="regDate" class="input-control" required>
+              </div>
+              <div class="form-group">
+                <label for="regStartTime">시작 시간 <span class="req">*</span></label>
+                <input type="time" id="regStartTime" class="input-control" value="09:00" required>
+              </div>
+              <div class="form-group">
+                <label for="regEndTime">종료 시간 <span class="req">*</span></label>
+                <input type="time" id="regEndTime" class="input-control" value="18:00" required>
+              </div>
+            </div>
+
+            <div class="form-row grid-2">
+              <div class="form-group">
+                <label for="regPlace">구분 <span class="req">*</span></label>
+                <select id="regPlace" class="input-control" required>
+                  <option value="9" selected>프로젝트 (9)</option>
+                  <option value="3">업무 (3)</option>
+                  <option value="1">내부미팅 (1)</option>
+                  <option value="2">외부미팅 (2)</option>
+                  <option value="10">내부교육 (10)</option>
+                  <option value="4">외부교육 (4)</option>
+                  <option value="8">근태 (8)</option>
+                  <option value="11">기타 (11)</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label for="regWriter">작성자</label>
+                <input type="text" id="regWriter" class="input-control" value="권민섭">
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label for="regSubject">일정 제목 <span class="req">*</span></label>
+              <input type="text" id="regSubject" class="input-control" placeholder="예: 동아쏘시오 AC 프로젝트 기획 회의" required>
+            </div>
+
+            <div class="form-group">
+              <label for="regCcAddr">참조자 (주소록 선택 또는 콤마 구분 입력)</label>
+              <div class="cc-input-group">
+                <input type="text" id="regCcAddr" class="input-control" placeholder="예: 김성진, 최준호, ">
+                <select id="addrBookSelect" class="input-control auto-width" title="주소록 선택 시 추가">
+                  <option value="">+ 주소록 추가</option>
+                </select>
+              </div>
+              <small class="helper-text">※ 인트라넷 SQL 규칙상 이름 끝에 콤마(,)와 띄어쓰기가 자동 유지됩니다.</small>
+            </div>
+
+            <div class="form-group">
+              <label for="regContent">세부 내용</label>
+              <textarea id="regContent" class="input-control textarea-control" rows="4" placeholder="회의 장소, 안건, 링크 등 상세 내용을 입력하세요."></textarea>
+            </div>
+
+            <div class="form-actions">
+              <button type="reset" class="btn btn-secondary">초기화</button>
+              <button type="submit" class="btn btn-primary" id="singleSubmitBtn">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <polyline points="20 6 9 17 4 12"></polyline>
+                </svg>
+                인트라넷에 일정 등록
+              </button>
+            </div>
+          </form>
+        </div>
+      </section>
+
+      <!-- 3. 구글 시트 / 파일 일괄등록 탭 -->
+      <section class="tab-pane" id="bulkRegisterTab">
+        <div class="form-container glass-card">
+          <div class="card-header">
+            <h3>다건 일정 일괄 등록</h3>
+            <p class="card-desc">구글 스프레드시트 링크 또는 로컬 CSV/엑셀 파일을 읽어 여러 일정을 한 번에 안전하게 등록합니다.</p>
+          </div>
+
+          <!-- 소스 선택 탭 / 인풋 -->
+          <div class="bulk-source-section">
+            <div class="form-group">
+              <label for="googleSheetUrlInput">구글 스프레드시트 URL</label>
+              <div class="input-with-btn">
+                <input type="url" id="googleSheetUrlInput" class="input-control" 
+                       value="https://docs.google.com/spreadsheets/d/1Vky8mgV1EMOzgAJQXfzcrrKbryddaKqxNHDUZ8opyes/edit" 
+                       placeholder="https://docs.google.com/spreadsheets/d/...">
+                <button type="button" class="btn btn-secondary" id="fetchSheetBtn">시트 불러오기</button>
+              </div>
+            </div>
+
+            <div class="divider-text">또는 CSV 파일 직접 업로드</div>
+
+            <div class="file-dropzone" id="csvDropzone">
+              <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                <polyline points="17 8 12 3 7 8"></polyline>
+                <line x1="12" y1="3" x2="12" y2="15"></line>
+              </svg>
+              <p class="dropzone-text">CSV 파일을 여기로 드래그하거나 <strong>파일 선택</strong></p>
+              <p class="dropzone-sub">지원 형식: CSV, UTF-8 (샘플: sample_schedules.csv)</p>
+              <input type="file" id="csvFileInput" accept=".csv" style="display:none;">
+            </div>
+          </div>
+
+          <!-- 미리보기 및 Dry-run 영역 -->
+          <div class="bulk-preview-section" id="bulkPreviewSection" style="display:none;">
+            <div class="preview-header">
+              <h4>등록 대상 일정 미리보기 (<span id="previewCount">0</span>건)</h4>
+              <div class="preview-actions">
+                <button class="btn btn-outline btn-sm" id="selectAllRowsBtn">전체 선택</button>
+                <button class="btn btn-primary" id="startBulkRegisterBtn">
+                  선택한 <span id="selectedCount">0</span>건 인트라넷 일괄 등록 실행
+                </button>
+              </div>
+            </div>
+
+            <!-- 프로그레스 바 -->
+            <div class="progress-bar-container" id="bulkProgressBar" style="display:none;">
+              <div class="progress-fill" id="bulkProgressFill" style="width:0%;"></div>
+              <span class="progress-text" id="bulkProgressText">진행 중: 0 / 0</span>
+            </div>
+
+            <div class="table-responsive">
+              <table class="data-table" id="bulkPreviewTable">
+                <thead>
+                  <tr>
+                    <th width="40"><input type="checkbox" id="checkAllBoxes" checked></th>
+                    <th>일자</th>
+                    <th>시간</th>
+                    <th>구분</th>
+                    <th>제목</th>
+                    <th>내용</th>
+                    <th>참조</th>
+                    <th>상태</th>
+                  </tr>
+                </thead>
+                <tbody id="bulkPreviewTbody">
+                  <!-- JS로 미리보기 행 주입 -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 4. 일정 검색 및 관리 탭 -->
+      <section class="tab-pane" id="manageTab">
+        <div class="glass-card">
+          <div class="card-header flex-between">
+            <div>
+              <h3>등록된 일정 검색 & 관리</h3>
+              <p class="card-desc">인트라넷에 등록된 일정을 조회, 수정, 삭제합니다.</p>
+            </div>
+            <div class="manage-filters">
+              <input type="text" id="searchKeywordInput" class="input-control" placeholder="제목/내용 키워드 검색...">
+              <button class="btn btn-secondary" id="searchRefreshBtn">조회 갱신</button>
+            </div>
+          </div>
+
+          <div class="table-responsive">
+            <table class="data-table" id="manageTable">
+              <thead>
+                <tr>
+                  <th width="80">일정ID</th>
+                  <th width="120">일자</th>
+                  <th>제목</th>
+                  <th width="140">작업</th>
+                </tr>
+              </thead>
+              <tbody id="manageTbody">
+                <tr>
+                  <td colspan="4" class="text-center py-4">조회된 일정이 없습니다. 새로고침을 눌러주세요.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- 5. 환경 설정 탭 -->
+      <section class="tab-pane" id="settingsTab">
+        <div class="form-container glass-card">
+          <div class="card-header">
+            <h3>환경 및 연결 설정</h3>
+            <p class="card-desc">사용자 ID(sIDX), 인트라넷 세션 쿠키, 서버 통신 방식을 설정합니다.</p>
+          </div>
+
+          <form id="settingsForm">
+            <div class="form-row grid-2">
+              <div class="form-group">
+                <label for="setSidx">사용자 ID (sIDX) <span class="req">*</span></label>
+                <input type="text" id="setSidx" class="input-control" value="669" required>
+                <small class="helper-text">권민섭 기본값: 669</small>
+              </div>
+              <div class="form-group">
+                <label for="setWriter">기본 작성자명</label>
+                <input type="text" id="setWriter" class="input-control" value="권민섭">
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label for="setCookie">인트라넷 세션 쿠키 (ASPSESSIONID)</label>
+              <input type="text" id="setCookie" class="input-control" placeholder="예: ASPSESSIONIDQSAABDBQ=FLGDCCCDBFFBDNCGFGEAJCAG">
+              <small class="helper-text">
+                크롬에서 <code>https://it.assesta.com</code> 로그인 후 개발자 도구(F12) → 애플리케이션 → 쿠키(Cookies)의 값을 복사해 넣으시면 됩니다.
+              </small>
+            </div>
+
+            <div class="form-group">
+              <label for="setEndpoint">API 프록시 엔드포인트</label>
+              <input type="text" id="setEndpoint" class="input-control" value="/api">
+              <small class="helper-text">로컬 서버 실행 시 <code>/api</code> (기본값)</small>
+            </div>
+
+            <div class="form-actions">
+              <button type="button" class="btn btn-secondary" id="testConnectionBtn">연결 상태 테스트</button>
+              <button type="submit" class="btn btn-primary">설정 저장</button>
+            </div>
+          </form>
+        </div>
+      </section>
+    </main>
+
+    <!-- 모달: 일정 상세 & 수정 -->
+    <div class="modal-backdrop" id="scheduleModal" style="display:none;">
+      <div class="modal-box glass-card">
+        <div class="modal-header">
+          <h3 id="modalTitle">일정 상세 및 수정</h3>
+          <button class="modal-close-btn" id="modalCloseBtn">&times;</button>
+        </div>
+        <div class="modal-body" id="modalBody">
+          <!-- 상세 폼 동적 주입 -->
+        </div>
+      </div>
+    </div>
+
+    <!-- 토스트 알림 컨테이너 -->
+    <div class="toast-container" id="toastContainer"></div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
