@@ -241,25 +241,41 @@ class ScheduleHandler(http.server.SimpleHTTPRequestHandler):
     def handle_get_address_book(self, query):
         sidx = query.get("sIDX", ["669"])[0]
         cookie = self.headers.get("X-Cookie", "")
-        url = f"{INTRANET_BASE}/schedule/schedule_reg.asp?sIDX={sidx}&year=2026&month=10&day=1"
 
+        addr_book = []
         try:
-            res = requests.get(url, headers=self._get_headers(cookie), timeout=10)
+            json_path = os.path.join(BASE_DIR, "data", "address_book.json")
+            if os.path.exists(json_path):
+                with open(json_path, "r", encoding="utf-8") as f:
+                    addr_book = json.load(f)
+        except Exception:
+            pass
+
+        url = f"{INTRANET_BASE}/schedule/schedule_reg.asp?sIDX={sidx}&year=2026&month=10&day=1"
+        try:
+            res = requests.get(url, headers=self._get_headers(cookie, sidx), timeout=10)
             res.encoding = "euc-kr"
             soup = BeautifulSoup(res.text, "html.parser")
 
-            addr_book = []
             sel = soup.find("select", attrs={"name": "addrBook"})
             if sel:
+                parsed_book = []
                 for opt in sel.find_all("option"):
-                    val = opt.get("value", "")
+                    val = opt.get("value", "").strip()
                     name = opt.get_text(strip=True)
-                    if name:
-                        addr_book.append({"value": val, "name": name})
+                    if name and val:
+                        is_team = any(k in name for k in ['팀', '센터', '소장', '부대표', '대표', '일정', '교육', '세미나', 'MBTI', '스튜디오', 'ZOOM', '공용'])
+                        parsed_book.append({"id": val, "name": name, "category": "team" if is_team else "member"})
+                if parsed_book:
+                    addr_book = parsed_book
 
-            self._send_json(200, {"success": True, "address_book": addr_book})
+            self._send_json(200, {"success": True, "address_book": addr_book, "count": len(addr_book)})
         except Exception as e:
-            self._send_json(500, {"success": False, "error": str(e)})
+            if addr_book:
+                self._send_json(200, {"success": True, "address_book": addr_book, "count": len(addr_book)})
+            else:
+                self._send_json(500, {"success": False, "error": str(e)})
+
 
     def handle_fetch_sheet(self, query):
         sheet_url = query.get("url", [""])[0]

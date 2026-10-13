@@ -1,0 +1,497 @@
+[
+  {
+    "id": "11",
+    "name": "경영관리팀",
+    "category": "team"
+  },
+  {
+    "id": "799",
+    "name": "고객지원팀",
+    "category": "team"
+  },
+  {
+    "id": "848",
+    "name": "고성실",
+    "category": "member"
+  },
+  {
+    "id": "690",
+    "name": "교육솔루션개발팀",
+    "category": "team"
+  },
+  {
+    "id": "677",
+    "name": "교육일정",
+    "category": "team"
+  },
+  {
+    "id": "390",
+    "name": "김경주",
+    "category": "member"
+  },
+  {
+    "id": "734",
+    "name": "김다솜",
+    "category": "member"
+  },
+  {
+    "id": "611",
+    "name": "김도연",
+    "category": "member"
+  },
+  {
+    "id": "828",
+    "name": "김미소",
+    "category": "member"
+  },
+  {
+    "id": "882",
+    "name": "김민주",
+    "category": "member"
+  },
+  {
+    "id": "884",
+    "name": "김석현",
+    "category": "member"
+  },
+  {
+    "id": "618",
+    "name": "김성모",
+    "category": "member"
+  },
+  {
+    "id": "867",
+    "name": "김성연",
+    "category": "member"
+  },
+  {
+    "id": "830",
+    "name": "김송하",
+    "category": "member"
+  },
+  {
+    "id": "566",
+    "name": "김수정",
+    "category": "member"
+  },
+  {
+    "id": "148",
+    "name": "김영재 전무이사",
+    "category": "member"
+  },
+  {
+    "id": "865",
+    "name": "김예인",
+    "category": "member"
+  },
+  {
+    "id": "885",
+    "name": "김용대",
+    "category": "member"
+  },
+  {
+    "id": "798",
+    "name": "김유경",
+    "category": "member"
+  },
+  {
+    "id": "282",
+    "name": "김은정",
+    "category": "member"
+  },
+  {
+    "id": "22",
+    "name": "김은주(소장)",
+    "category": "team"
+  },
+  {
+    "id": "635",
+    "name": "김재국",
+    "category": "member"
+  },
+  {
+    "id": "846",
+    "name": "김재형",
+    "category": "member"
+  },
+  {
+    "id": "464",
+    "name": "김지영",
+    "category": "member"
+  },
+  {
+    "id": "883",
+    "name": "김진욱",
+    "category": "member"
+  },
+  {
+    "id": "520",
+    "name": "김태진(부대표)",
+    "category": "team"
+  },
+  {
+    "id": "870",
+    "name": "김하영",
+    "category": "member"
+  },
+  {
+    "id": "608",
+    "name": "김희선",
+    "category": "member"
+  },
+  {
+    "id": "871",
+    "name": "남다영",
+    "category": "member"
+  },
+  {
+    "id": "749",
+    "name": "남보란",
+    "category": "member"
+  },
+  {
+    "id": "879",
+    "name": "남지민",
+    "category": "member"
+  },
+  {
+    "id": "872",
+    "name": "남하린",
+    "category": "member"
+  },
+  {
+    "id": "63",
+    "name": "대구센터",
+    "category": "team"
+  },
+  {
+    "id": "1",
+    "name": "대표님",
+    "category": "team"
+  },
+  {
+    "id": "701",
+    "name": "대표님",
+    "category": "team"
+  },
+  {
+    "id": "633",
+    "name": "마케팅팀",
+    "category": "team"
+  },
+  {
+    "id": "170",
+    "name": "문경춘",
+    "category": "member"
+  },
+  {
+    "id": "880",
+    "name": "문서현",
+    "category": "member"
+  },
+  {
+    "id": "8",
+    "name": "물류팀",
+    "category": "team"
+  },
+  {
+    "id": "851",
+    "name": "박민주",
+    "category": "member"
+  },
+  {
+    "id": "727",
+    "name": "박보민",
+    "category": "member"
+  },
+  {
+    "id": "837",
+    "name": "박예진",
+    "category": "member"
+  },
+  {
+    "id": "849",
+    "name": "박지혜",
+    "category": "member"
+  },
+  {
+    "id": "873",
+    "name": "박하",
+    "category": "member"
+  },
+  {
+    "id": "765",
+    "name": "박형준",
+    "category": "member"
+  },
+  {
+    "id": "5",
+    "name": "부산센터",
+    "category": "team"
+  },
+  {
+    "id": "229",
+    "name": "상담일정_서울",
+    "category": "team"
+  },
+  {
+    "id": "847",
+    "name": "서연교",
+    "category": "member"
+  },
+  {
+    "id": "631",
+    "name": "서울경기공용",
+    "category": "team"
+  },
+  {
+    "id": "161",
+    "name": "서울경기센터",
+    "category": "team"
+  },
+  {
+    "id": "733",
+    "name": "서준희",
+    "category": "member"
+  },
+  {
+    "id": "729",
+    "name": "선지안",
+    "category": "member"
+  },
+  {
+    "id": "725",
+    "name": "센터",
+    "category": "team"
+  },
+  {
+    "id": "151",
+    "name": "손성훈",
+    "category": "member"
+  },
+  {
+    "id": "630",
+    "name": "손창민",
+    "category": "member"
+  },
+  {
+    "id": "7",
+    "name": "솔루션엔지니어링팀",
+    "category": "team"
+  },
+  {
+    "id": "293",
+    "name": "송미리",
+    "category": "member"
+  },
+  {
+    "id": "716",
+    "name": "스튜디오",
+    "category": "team"
+  },
+  {
+    "id": "691",
+    "name": "심리솔루션개발팀",
+    "category": "team"
+  },
+  {
+    "id": "845",
+    "name": "안범현",
+    "category": "member"
+  },
+  {
+    "id": "478",
+    "name": "여창엽",
+    "category": "member"
+  },
+  {
+    "id": "715",
+    "name": "역량평가 개발팀",
+    "category": "team"
+  },
+  {
+    "id": "703",
+    "name": "역량평가 운영팀",
+    "category": "team"
+  },
+  {
+    "id": "349",
+    "name": "오경민",
+    "category": "member"
+  },
+  {
+    "id": "655",
+    "name": "오리나",
+    "category": "member"
+  },
+  {
+    "id": "706",
+    "name": "온라인 교육",
+    "category": "team"
+  },
+  {
+    "id": "707",
+    "name": "온라인세미나",
+    "category": "team"
+  },
+  {
+    "id": "746",
+    "name": "유아림",
+    "category": "member"
+  },
+  {
+    "id": "827",
+    "name": "이동철",
+    "category": "member"
+  },
+  {
+    "id": "38",
+    "name": "이명수",
+    "category": "member"
+  },
+  {
+    "id": "875",
+    "name": "이민경",
+    "category": "member"
+  },
+  {
+    "id": "767",
+    "name": "이민정",
+    "category": "member"
+  },
+  {
+    "id": "881",
+    "name": "이상범",
+    "category": "member"
+  },
+  {
+    "id": "869",
+    "name": "이서원",
+    "category": "member"
+  },
+  {
+    "id": "755",
+    "name": "이선호",
+    "category": "member"
+  },
+  {
+    "id": "551",
+    "name": "이수린",
+    "category": "member"
+  },
+  {
+    "id": "797",
+    "name": "이승연",
+    "category": "member"
+  },
+  {
+    "id": "831",
+    "name": "이윤지",
+    "category": "member"
+  },
+  {
+    "id": "712",
+    "name": "이재형",
+    "category": "member"
+  },
+  {
+    "id": "773",
+    "name": "이정림",
+    "category": "member"
+  },
+  {
+    "id": "878",
+    "name": "임성원",
+    "category": "member"
+  },
+  {
+    "id": "388",
+    "name": "임희철",
+    "category": "member"
+  },
+  {
+    "id": "705",
+    "name": "자격교육",
+    "category": "team"
+  },
+  {
+    "id": "876",
+    "name": "정서연",
+    "category": "member"
+  },
+  {
+    "id": "788",
+    "name": "정주영",
+    "category": "member"
+  },
+  {
+    "id": "877",
+    "name": "조수민",
+    "category": "member"
+  },
+  {
+    "id": "735",
+    "name": "조유라",
+    "category": "member"
+  },
+  {
+    "id": "801",
+    "name": "주찬미",
+    "category": "member"
+  },
+  {
+    "id": "742",
+    "name": "최예림",
+    "category": "member"
+  },
+  {
+    "id": "346",
+    "name": "최윤희",
+    "category": "member"
+  },
+  {
+    "id": "237",
+    "name": "최화열 전무이사",
+    "category": "member"
+  },
+  {
+    "id": "467",
+    "name": "최희정",
+    "category": "member"
+  },
+  {
+    "id": "9",
+    "name": "충청센터",
+    "category": "team"
+  },
+  {
+    "id": "704",
+    "name": "커리어/진로",
+    "category": "member"
+  },
+  {
+    "id": "783",
+    "name": "편지연",
+    "category": "member"
+  },
+  {
+    "id": "171",
+    "name": "호남센터",
+    "category": "team"
+  },
+  {
+    "id": "702",
+    "name": "MBTI",
+    "category": "team"
+  },
+  {
+    "id": "800",
+    "name": "UX플랫폼팀",
+    "category": "team"
+  },
+  {
+    "id": "700",
+    "name": "ZOOM",
+    "category": "team"
+  }
+]

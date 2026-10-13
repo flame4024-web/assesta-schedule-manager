@@ -5,12 +5,18 @@
 (function () {
   'use strict';
 
+  // --- 99명 사내 주소록 기본 데이터 (즉각 반응 Fallback) ---
+  const DEFAULT_ADDR_BOOK = [{"id": "11", "name": "경영관리팀", "category": "team"}, {"id": "799", "name": "고객지원팀", "category": "team"}, {"id": "848", "name": "고성실", "category": "member"}, {"id": "690", "name": "교육솔루션개발팀", "category": "team"}, {"id": "677", "name": "교육일정", "category": "team"}, {"id": "390", "name": "김경주", "category": "member"}, {"id": "734", "name": "김다솜", "category": "member"}, {"id": "611", "name": "김도연", "category": "member"}, {"id": "828", "name": "김미소", "category": "member"}, {"id": "882", "name": "김민주", "category": "member"}, {"id": "884", "name": "김석현", "category": "member"}, {"id": "618", "name": "김성모", "category": "member"}, {"id": "867", "name": "김성연", "category": "member"}, {"id": "830", "name": "김송하", "category": "member"}, {"id": "566", "name": "김수정", "category": "member"}, {"id": "148", "name": "김영재 전무이사", "category": "member"}, {"id": "865", "name": "김예인", "category": "member"}, {"id": "885", "name": "김용대", "category": "member"}, {"id": "798", "name": "김유경", "category": "member"}, {"id": "282", "name": "김은정", "category": "member"}, {"id": "22", "name": "김은주(소장)", "category": "team"}, {"id": "635", "name": "김재국", "category": "member"}, {"id": "846", "name": "김재형", "category": "member"}, {"id": "464", "name": "김지영", "category": "member"}, {"id": "883", "name": "김진욱", "category": "member"}, {"id": "520", "name": "김태진(부대표)", "category": "team"}, {"id": "870", "name": "김하영", "category": "member"}, {"id": "608", "name": "김희선", "category": "member"}, {"id": "871", "name": "남다영", "category": "member"}, {"id": "749", "name": "남보란", "category": "member"}, {"id": "879", "name": "남지민", "category": "member"}, {"id": "872", "name": "남하린", "category": "member"}, {"id": "63", "name": "대구센터", "category": "team"}, {"id": "1", "name": "대표님", "category": "team"}, {"id": "701", "name": "대표님", "category": "team"}, {"id": "633", "name": "마케팅팀", "category": "team"}, {"id": "170", "name": "문경춘", "category": "member"}, {"id": "880", "name": "문서현", "category": "member"}, {"id": "8", "name": "물류팀", "category": "team"}, {"id": "851", "name": "박민주", "category": "member"}, {"id": "727", "name": "박보민", "category": "member"}, {"id": "837", "name": "박예진", "category": "member"}, {"id": "849", "name": "박지혜", "category": "member"}, {"id": "873", "name": "박하", "category": "member"}, {"id": "765", "name": "박형준", "category": "member"}, {"id": "5", "name": "부산센터", "category": "team"}, {"id": "229", "name": "상담일정_서울", "category": "team"}, {"id": "847", "name": "서연교", "category": "member"}, {"id": "631", "name": "서울경기공용", "category": "team"}, {"id": "161", "name": "서울경기센터", "category": "team"}, {"id": "733", "name": "서준희", "category": "member"}, {"id": "729", "name": "선지안", "category": "member"}, {"id": "725", "name": "센터", "category": "team"}, {"id": "151", "name": "손성훈", "category": "member"}, {"id": "630", "name": "손창민", "category": "member"}, {"id": "7", "name": "솔루션엔지니어링팀", "category": "team"}, {"id": "293", "name": "송미리", "category": "member"}, {"id": "716", "name": "스튜디오", "category": "team"}, {"id": "691", "name": "심리솔루션개발팀", "category": "team"}, {"id": "845", "name": "안범현", "category": "member"}, {"id": "478", "name": "여창엽", "category": "member"}, {"id": "715", "name": "역량평가 개발팀", "category": "team"}, {"id": "703", "name": "역량평가 운영팀", "category": "team"}, {"id": "349", "name": "오경민", "category": "member"}, {"id": "655", "name": "오리나", "category": "member"}, {"id": "706", "name": "온라인 교육", "category": "team"}, {"id": "707", "name": "온라인세미나", "category": "team"}, {"id": "746", "name": "유아림", "category": "member"}, {"id": "827", "name": "이동철", "category": "member"}, {"id": "38", "name": "이명수", "category": "member"}, {"id": "875", "name": "이민경", "category": "member"}, {"id": "767", "name": "이민정", "category": "member"}, {"id": "881", "name": "이상범", "category": "member"}, {"id": "869", "name": "이서원", "category": "member"}, {"id": "755", "name": "이선호", "category": "member"}, {"id": "551", "name": "이수린", "category": "member"}, {"id": "797", "name": "이승연", "category": "member"}, {"id": "831", "name": "이윤지", "category": "member"}, {"id": "712", "name": "이재형", "category": "member"}, {"id": "773", "name": "이정림", "category": "member"}, {"id": "878", "name": "임성원", "category": "member"}, {"id": "388", "name": "임희철", "category": "member"}, {"id": "705", "name": "자격교육", "category": "team"}, {"id": "876", "name": "정서연", "category": "member"}, {"id": "788", "name": "정주영", "category": "member"}, {"id": "877", "name": "조수민", "category": "member"}, {"id": "735", "name": "조유라", "category": "member"}, {"id": "801", "name": "주찬미", "category": "member"}, {"id": "742", "name": "최예림", "category": "member"}, {"id": "346", "name": "최윤희", "category": "member"}, {"id": "237", "name": "최화열 전무이사", "category": "member"}, {"id": "467", "name": "최희정", "category": "member"}, {"id": "9", "name": "충청센터", "category": "team"}, {"id": "704", "name": "커리어/진로", "category": "member"}, {"id": "783", "name": "편지연", "category": "member"}, {"id": "171", "name": "호남센터", "category": "team"}, {"id": "702", "name": "MBTI", "category": "team"}, {"id": "800", "name": "UX플랫폼팀", "category": "team"}, {"id": "700", "name": "ZOOM", "category": "team"}];
+
   // --- 기본 상태 (State) ---
   const state = {
     currentDate: new Date(),
     schedules: [],
     bulkList: [],
-    addressBook: [],
+    addressBook: [...DEFAULT_ADDR_BOOK],
+    selectedCcList: [],
+    ccCategoryFilter: 'all',
+    ccSearchQuery: '',
     config: {
       sIDX: '669',
       writer: '권민섭',
@@ -18,6 +24,7 @@
       endpoint: '/api'
     }
   };
+
 
   // --- 상수 매핑 ---
   const PLACE_MAP = {
@@ -68,8 +75,22 @@
     regWriter: document.getElementById('regWriter'),
     regSubject: document.getElementById('regSubject'),
     regCcAddr: document.getElementById('regCcAddr'),
+    regCcInput: document.getElementById('regCcInput'),
+    ccChipBox: document.getElementById('ccChipBox'),
+    ccChipsList: document.getElementById('ccChipsList'),
+    ccOpenDropdownBtn: document.getElementById('ccOpenDropdownBtn'),
+    ccClearAllBtn: document.getElementById('ccClearAllBtn'),
+    ccDropdownPanel: document.getElementById('ccDropdownPanel'),
+    ccFilterKeyword: document.getElementById('ccFilterKeyword'),
+    ccFilterTabs: document.querySelectorAll('.cc-tab'),
+    ccMembersGrid: document.getElementById('ccMembersGrid'),
+    ccSelectedCount: document.getElementById('ccSelectedCount'),
+    ccCloseDropdownBtn: document.getElementById('ccCloseDropdownBtn'),
+    ccTotalBadge: document.getElementById('ccTotalBadge'),
+    ccCountAll: document.getElementById('ccCountAll'),
+    ccCountTeam: document.getElementById('ccCountTeam'),
+    ccCountMember: document.getElementById('ccCountMember'),
     regContent: document.getElementById('regContent'),
-    addrBookSelect: document.getElementById('addrBookSelect'),
 
     // 일괄 등록
     googleSheetUrlInput: document.getElementById('googleSheetUrlInput'),
@@ -113,11 +134,13 @@
     loadConfig();
     initTheme();
     bindEvents();
+    initCcPicker();
     setDefaultDateValues();
     renderCalendar();
     fetchCalendarData();
     fetchAddressBook();
   }
+
 
   const DEFAULT_COOKIE = 'ASPSESSIONIDQSAABDBQ=ELGDCCCDCNPMNFKJHLICMEMG; autologin=1; BP%5FIDX=1; deptIDX=28; IDX=669; Manager%5Fn=N; saveID=mskwon; userGrade=5; userID=mskwon; userIDX=727; userName=%B1%C7%B9%CE%BC%87; userPass=1q2w3e4r1%21';
 
@@ -349,23 +372,224 @@
     }
   }
 
-  async function fetchAddressBook() {
-    try {
-      const res = await apiCall(`/address_book?sIDX=${state.config.sIDX}`);
-      if (res && res.success && res.address_book) {
-        state.addressBook = res.address_book;
-        elements.addrBookSelect.innerHTML = '<option value="">+ 주소록 선택 추가</option>';
-        state.addressBook.forEach(item => {
-          const opt = document.createElement('option');
-          opt.value = item.name;
-          opt.textContent = item.name;
-          elements.addrBookSelect.appendChild(opt);
-        });
+  // --- 참조자(CC) 멀티셀렉트 컴포넌트 컨트롤러 ---
+  function initCcPicker() {
+    renderCcChips();
+    updateCcCategoryCounts();
+    renderCcMembersGrid();
+
+    // 입력창 클릭/포커스 시 드롭다운 열기
+    elements.regCcInput.addEventListener('focus', () => {
+      openCcDropdown();
+    });
+
+    // 칩 박스 클릭 시 인풋에 포커스
+    elements.ccChipBox.addEventListener('click', (e) => {
+      if (!e.target.closest('.cc-chip-remove')) {
+        elements.regCcInput.focus();
       }
-    } catch (e) {
-      console.warn('주소록 로드 건너뜀:', e);
+    });
+
+    // 직접 텍스트 입력 처리: 엔터, 쉼표, 세미콜론 입력 시 칩으로 추가
+    elements.regCcInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ',' || e.key === ';') {
+        e.preventDefault();
+        const val = elements.regCcInput.value.trim().replace(/[,;]$/, '');
+        if (val) {
+          addCcMember(val);
+          elements.regCcInput.value = '';
+        }
+      } else if (e.key === 'Backspace' && elements.regCcInput.value === '' && state.selectedCcList.length > 0) {
+        removeCcMember(state.selectedCcList[state.selectedCcList.length - 1]);
+      }
+    });
+
+    // 인풋 입력 시 실시간 검색 연동
+    elements.regCcInput.addEventListener('input', (e) => {
+      state.ccSearchQuery = e.target.value.trim();
+      elements.ccFilterKeyword.value = state.ccSearchQuery;
+      openCcDropdown();
+      renderCcMembersGrid();
+    });
+
+    // 드롭다운 내부 검색창
+    elements.ccFilterKeyword.addEventListener('input', (e) => {
+      state.ccSearchQuery = e.target.value.trim();
+      renderCcMembersGrid();
+    });
+
+    // 카테고리 탭 (전체 / 팀·부서 / 임직원)
+    elements.ccFilterTabs.forEach(tab => {
+      tab.addEventListener('click', () => {
+        elements.ccFilterTabs.forEach(t => t.classList.remove('active'));
+        tab.classList.add('active');
+        state.ccCategoryFilter = tab.getAttribute('data-category');
+        renderCcMembersGrid();
+      });
+    });
+
+    // 드롭다운 토글 버튼
+    elements.ccOpenDropdownBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      toggleCcDropdown();
+    });
+
+    elements.ccCloseDropdownBtn.addEventListener('click', () => {
+      closeCcDropdown();
+    });
+
+    // 전체 비우기 버튼
+    elements.ccClearAllBtn.addEventListener('click', () => {
+      clearAllCcMembers();
+    });
+
+    // 바깥 클릭 시 드롭다운 닫기
+    document.addEventListener('click', (e) => {
+      if (!e.target.closest('.cc-picker-group')) {
+        closeCcDropdown();
+      }
+    });
+  }
+
+  function toggleCcDropdown() {
+    if (elements.ccDropdownPanel.style.display === 'none' || !elements.ccDropdownPanel.style.display) {
+      openCcDropdown();
+    } else {
+      closeCcDropdown();
     }
   }
+
+  function openCcDropdown() {
+    elements.ccDropdownPanel.style.display = 'block';
+    renderCcMembersGrid();
+  }
+
+  function closeCcDropdown() {
+    elements.ccDropdownPanel.style.display = 'none';
+  }
+
+  function updateCcCategoryCounts() {
+    const total = state.addressBook.length;
+    const teams = state.addressBook.filter(m => m.category === 'team').length;
+    const members = state.addressBook.filter(m => m.category !== 'team').length;
+
+    if (elements.ccTotalBadge) elements.ccTotalBadge.textContent = total;
+    if (elements.ccCountAll) elements.ccCountAll.textContent = total;
+    if (elements.ccCountTeam) elements.ccCountTeam.textContent = teams;
+    if (elements.ccCountMember) elements.ccCountMember.textContent = members;
+  }
+
+  function renderCcChips() {
+    elements.ccChipsList.innerHTML = '';
+    state.selectedCcList.forEach(name => {
+      const isTeam = state.addressBook.some(m => m.name === name && m.category === 'team');
+      const chip = document.createElement('div');
+      chip.className = `cc-chip ${isTeam ? 'team' : ''}`;
+      chip.innerHTML = `
+        <span>${name}</span>
+        <span class="cc-chip-remove" title="삭제">&times;</span>
+      `;
+      chip.querySelector('.cc-chip-remove').addEventListener('click', (e) => {
+        e.stopPropagation();
+        removeCcMember(name);
+      });
+      elements.ccChipsList.appendChild(chip);
+    });
+
+    // 히든 인풋에 인트라넷 규격 문자열 동기화 (예: '김성진, 최준호, ')
+    if (state.selectedCcList.length > 0) {
+      elements.regCcAddr.value = state.selectedCcList.join(', ') + ', ';
+      elements.ccClearAllBtn.style.display = 'inline-flex';
+    } else {
+      elements.regCcAddr.value = '';
+      elements.ccClearAllBtn.style.display = 'none';
+    }
+
+    if (elements.ccSelectedCount) {
+      elements.ccSelectedCount.textContent = state.selectedCcList.length;
+    }
+  }
+
+  function renderCcMembersGrid() {
+    elements.ccMembersGrid.innerHTML = '';
+    const q = state.ccSearchQuery.toLowerCase();
+    const cat = state.ccCategoryFilter;
+
+    const filtered = state.addressBook.filter(m => {
+      if (cat === 'team' && m.category !== 'team') return false;
+      if (cat === 'member' && m.category === 'team') return false;
+      if (q && !m.name.toLowerCase().includes(q)) return false;
+      return true;
+    });
+
+    if (filtered.length === 0) {
+      elements.ccMembersGrid.innerHTML = '<div style="grid-column: 1/-1; text-align: center; color: var(--text-muted); padding: 1.5rem 0; font-size: 0.85rem;">검색 결과가 없습니다.</div>';
+      return;
+    }
+
+    filtered.forEach(m => {
+      const isSelected = state.selectedCcList.includes(m.name);
+      const item = document.createElement('div');
+      item.className = `cc-member-item ${isSelected ? 'selected' : ''}`;
+      item.innerHTML = `
+        <span class="cc-member-name">${m.name}</span>
+        <div style="display: flex; align-items: center;">
+          <span class="cc-member-badge">${m.category === 'team' ? '팀' : '직원'}</span>
+          <span class="cc-check-icon">✓</span>
+        </div>
+      `;
+      item.addEventListener('click', () => {
+        toggleCcMember(m.name);
+      });
+      elements.ccMembersGrid.appendChild(item);
+    });
+  }
+
+  function toggleCcMember(name) {
+    if (state.selectedCcList.includes(name)) {
+      removeCcMember(name);
+    } else {
+      addCcMember(name);
+    }
+  }
+
+  function addCcMember(name) {
+    name = name.trim();
+    if (!name) return;
+    if (!state.selectedCcList.includes(name)) {
+      state.selectedCcList.push(name);
+      renderCcChips();
+      renderCcMembersGrid();
+    }
+  }
+
+  function removeCcMember(name) {
+    state.selectedCcList = state.selectedCcList.filter(n => n !== name);
+    renderCcChips();
+    renderCcMembersGrid();
+  }
+
+  function clearAllCcMembers() {
+    state.selectedCcList = [];
+    renderCcChips();
+    renderCcMembersGrid();
+  }
+
+  async function fetchAddressBook() {
+    updateCcCategoryCounts();
+    renderCcMembersGrid();
+    try {
+      const res = await apiCall(`/address_book?sIDX=${state.config.sIDX}`);
+      if (res && res.success && res.address_book && res.address_book.length > 0) {
+        state.addressBook = res.address_book;
+        updateCcCategoryCounts();
+        renderCcMembersGrid();
+      }
+    } catch (e) {
+      console.warn('주소록 라이브 로드 건너뜀 (내장 기본 데이터 사용):', e);
+    }
+  }
+
 
   // --- 단건 등록 ---
   async function handleSingleRegister(e) {
@@ -393,6 +617,7 @@
         showToast('일정이 인트라넷에 성공적으로 등록되었습니다!', 'success');
         elements.regSubject.value = '';
         elements.regContent.value = '';
+        clearAllCcMembers();
         fetchCalendarData();
         switchTab('calendarTab');
       } else {
@@ -746,16 +971,10 @@
 
     // 단건 등록 폼
     elements.singleRegisterForm.addEventListener('submit', handleSingleRegister);
-
-    // 주소록 선택 시 자동 추가
-    elements.addrBookSelect.addEventListener('change', () => {
-      const name = elements.addrBookSelect.value;
-      if (name) {
-        const current = elements.regCcAddr.value.trim();
-        elements.regCcAddr.value = current ? `${current}, ${name}, ` : `${name}, `;
-        elements.addrBookSelect.value = '';
-      }
+    elements.singleRegisterForm.addEventListener('reset', () => {
+      setTimeout(() => clearAllCcMembers(), 10);
     });
+
 
     // 다건 일괄 등록 이벤트
     elements.fetchSheetBtn.addEventListener('click', handleFetchGoogleSheet);

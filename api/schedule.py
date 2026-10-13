@@ -10,6 +10,7 @@ import urllib.parse
 import urllib.request
 import ssl
 import re
+import os
 
 try:
     import requests
@@ -202,6 +203,44 @@ class handler(BaseHTTPRequestHandler):
                 })
             except Exception as e:
                 self._send_json(500, {"success": False, "error": str(e)})
+        if path.endswith("/address_book"):
+            sidx = query.get("sIDX", ["669"])[0]
+            raw_cookie = self.headers.get("X-Cookie", "")
+            cookie = normalize_cookie(raw_cookie, sidx)
+
+            addr_book = []
+            try:
+                base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+                json_path = os.path.join(base_dir, "data", "address_book.json")
+                if os.path.exists(json_path):
+                    with open(json_path, "r", encoding="utf-8") as f:
+                        addr_book = json.load(f)
+            except Exception:
+                pass
+
+            url = f"{INTRANET_BASE}/schedule/schedule_reg.asp?sIDX={sidx}&year=2026&month=10&day=1"
+            headers = {
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0",
+                "Referer": f"{INTRANET_BASE}/schedule/schedule.asp",
+                "Cookie": cookie
+            }
+            try:
+                status, text = make_request(url, method="GET", headers=headers)
+                if "addrBook" in text:
+                    parsed_book = []
+                    options = re.findall(r'<option[^>]*value=[\'"]?(\d+)[\'"]?[^>]*>(.*?)</option>', text, re.IGNORECASE)
+                    for val, name in options:
+                        val = val.strip()
+                        name = re.sub(r'<[^>]+>', '', name).strip()
+                        if name and val:
+                            is_team = any(k in name for k in ['팀', '센터', '소장', '부대표', '대표', '일정', '교육', '세미나', 'MBTI', '스튜디오', 'ZOOM', '공용'])
+                            parsed_book.append({"id": val, "name": name, "category": "team" if is_team else "member"})
+                    if parsed_book:
+                        addr_book = parsed_book
+            except Exception:
+                pass
+
+            self._send_json(200, {"success": True, "address_book": addr_book, "count": len(addr_book)})
             return
 
         if path.endswith("/fetch_sheet"):

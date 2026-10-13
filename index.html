@@ -191,16 +191,66 @@
               <input type="text" id="regSubject" class="input-control" placeholder="예: 동아쏘시오 AC 프로젝트 기획 회의" required>
             </div>
 
-            <div class="form-group">
-              <label for="regCcAddr">참조자 (주소록 선택 또는 콤마 구분 입력)</label>
-              <div class="cc-input-group">
-                <input type="text" id="regCcAddr" class="input-control" placeholder="예: 김성진, 최준호, ">
-                <select id="addrBookSelect" class="input-control auto-width" title="주소록 선택 시 추가">
-                  <option value="">+ 주소록 추가</option>
-                </select>
+            <div class="form-group cc-picker-group">
+              <div class="cc-header-row">
+                <label for="regCcInput">참조자 (주소록 선택 및 검색)</label>
+                <div class="cc-header-actions">
+                  <button type="button" class="btn-text-action" id="ccOpenDropdownBtn">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                      <circle cx="9" cy="7" r="4"></circle>
+                      <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                      <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                    </svg>
+                    주소록 명단 (<span id="ccTotalBadge">99</span>명)
+                  </button>
+                  <button type="button" class="btn-text-action danger" id="ccClearAllBtn" style="display: none;">
+                    전체 비우기
+                  </button>
+                </div>
               </div>
-              <small class="helper-text">※ 인트라넷 SQL 규칙상 이름 끝에 콤마(,)와 띄어쓰기가 자동 유지됩니다.</small>
+
+              <!-- 칩(태그) 및 인라인 검색 인풋 -->
+              <div class="cc-chip-box" id="ccChipBox">
+                <div class="cc-chips-list" id="ccChipsList"></div>
+                <input type="text" id="regCcInput" class="cc-search-input" placeholder="이름/팀 검색 또는 클릭하여 명단 선택..." autocomplete="off">
+              </div>
+
+              <!-- 실제 서버 전송용 숨김 필드 -->
+              <input type="hidden" id="regCcAddr" name="ccAddr" value="">
+
+              <!-- 모던 드롭다운 명단 패널 -->
+              <div class="cc-dropdown-panel" id="ccDropdownPanel" style="display: none;">
+                <div class="cc-panel-header">
+                  <div class="cc-search-wrapper">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <circle cx="11" cy="11" r="8"></circle>
+                      <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                    </svg>
+                    <input type="text" id="ccFilterKeyword" placeholder="이름 또는 팀명 검색..." autocomplete="off">
+                  </div>
+                  <div class="cc-filter-tabs">
+                    <button type="button" class="cc-tab active" data-category="all">전체 (<span id="ccCountAll">99</span>)</button>
+                    <button type="button" class="cc-tab" data-category="team">팀/부서 (<span id="ccCountTeam">29</span>)</button>
+                    <button type="button" class="cc-tab" data-category="member">임직원 (<span id="ccCountMember">70</span>)</button>
+                  </div>
+                </div>
+
+                <div class="cc-members-grid" id="ccMembersGrid">
+                  <!-- 동적 로드 -->
+                </div>
+
+                <div class="cc-panel-footer">
+                  <span class="cc-selection-status">선택된 참조자: <strong id="ccSelectedCount">0</strong>명</span>
+                  <div class="cc-footer-buttons">
+                    <button type="button" class="btn btn-sm btn-primary" id="ccCloseDropdownBtn">확인</button>
+                  </div>
+                </div>
+              </div>
+
+              <small class="helper-text">※ 명단을 클릭하면 즉시 추가/해제되며, 직접 입력 후 쉼표나 엔터를 쳐도 추가됩니다.</small>
             </div>
+
 
             <div class="form-group">
               <label for="regContent">세부 내용</label>
