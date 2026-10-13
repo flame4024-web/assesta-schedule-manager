@@ -162,27 +162,67 @@ class handler(BaseHTTPRequestHandler):
                     soup = BeautifulSoup(text, "html.parser")
                     for el in soup.find_all(attrs={"onclick": True}):
                         oc = el.get("onclick", "")
-                        om = re.search(r"View_Popup\((\d+)\)", oc)
+                        om = re.search(r"View_Popup\((\d+)\s*(?:,\s*(\d+))?\)", oc)
                         if om:
                             idx = om.group(1)
-                            title = el.get_text(strip=True)
+                            title_short = el.get_text(strip=True)
+                            full_title = title_short
+                            writer = ""
+                            cc_addr = ""
+                            place_text = ""
+                            time_str = ""
+                            content = ""
+
+                            om_attr = el.get("onmouseover", "")
+                            if "Detail_View" in om_attr:
+                                m_detail = re.search(r"Detail_View\('(.*)'\);", om_attr, re.DOTALL)
+                                if m_detail:
+                                    inner_html = m_detail.group(1).replace(r"\'", "'")
+                                    dsoup = BeautifulSoup(inner_html, "html.parser")
+                                    for tr in dsoup.find_all("tr"):
+                                        tds = tr.find_all("td")
+                                        if len(tds) >= 2:
+                                            k = tds[0].get_text(strip=True).replace(":", "")
+                                            v = tds[1].get_text("\n", strip=True)
+                                            if "제목" in k and v: full_title = v
+                                            elif "작성" in k: writer = v
+                                            elif "참조" in k: cc_addr = v
+                                            elif "구분" in k: place_text = v
+                                            elif "시간" in k: time_str = v
+                                            elif "내용" in k: content = v
+
                             td = el.find_parent("td")
                             date_val = None
                             if td:
-                                # 같은 TD 또는 주변에서 날짜 찾기
                                 lines = [l.strip() for l in td.get_text().splitlines() if l.strip()]
                                 for line in lines:
                                     if line.isdigit() and 1 <= int(line) <= 31:
                                         date_val = f"{year}-{month}-{line.zfill(2)}"
                                         break
+
+                            s_time = "09:00"
+                            e_time = "18:00"
+                            tm = re.search(r"(\d{1,2})시\s*(\d{1,2})분\s*~\s*(\d{1,2})시\s*(\d{1,2})분", time_str)
+                            if tm:
+                                s_time = f"{int(tm.group(1)):02d}:{int(tm.group(2)):02d}"
+                                e_time = f"{int(tm.group(3)):02d}:{int(tm.group(4)):02d}"
+
                             schedules.append({
                                 "idx": idx,
-                                "title": title,
+                                "title": full_title,
+                                "title_short": title_short,
                                 "date": date_val,
+                                "startTime": s_time,
+                                "endTime": e_time,
+                                "timeStr": time_str,
+                                "placeText": place_text,
+                                "place": PLACE_MAP.get(place_text, "9"),
+                                "writer": writer,
+                                "ccAddr": cc_addr,
+                                "content": content,
                                 "sIDX": sidx
                             })
                 else:
-                    # 정규식 fallback
                     matches = re.finditer(r"View_Popup\((\d+)\)[^>]*>(.*?)<\/", text, re.IGNORECASE)
                     for m in matches:
                         idx = m.group(1)
@@ -190,6 +230,7 @@ class handler(BaseHTTPRequestHandler):
                         schedules.append({
                             "idx": idx,
                             "title": title,
+                            "title_short": title,
                             "date": None,
                             "sIDX": sidx
                         })
@@ -201,8 +242,82 @@ class handler(BaseHTTPRequestHandler):
                     "schedules": schedules,
                     "cookie_provided": bool(cookie)
                 })
+                return
             except Exception as e:
                 self._send_json(500, {"success": False, "error": str(e)})
+                return
+
+        if path.endswith("/schedule_detail") or path.endswith("/detail"):
+            idx = query.get("idx", [""])[0]
+            sidx = query.get("sIDX", ["669"])[0]
+            raw_cookie = self.headers.get("X-Cookie", "")
+            cookie = normalize_cookie(raw_cookie, sidx)
+
+            if not idx:
+                self._send_json(400, {"error": "idx is required"})
+                return
+
+            url = f"{INTRANET_BASE}/schedule/schedule_view.asp?idx={idx}&sIDX={sidx}"
+            headers = {
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0",
+                "Referer": f"{INTRANET_BASE}/schedule/schedule.asp",
+                "Cookie": cookie
+            }
+            try:
+                status, text = make_request(url, method="GET", headers=headers)
+                form_data = {
+                    "idx": idx,
+                    "sIDX": sidx,
+                    "subject": "",
+                    "writer": "",
+                    "ccAddr": "",
+                    "place": "9",
+                    "startTime": "09:00",
+                    "endTime": "18:00",
+                    "content": ""
+                }
+                s_hour, s_min, e_hour, e_min = "9", "0", "18", "0"
+
+                if BeautifulSoup is not None:
+                    soup = BeautifulSoup(text, "html.parser")
+                    for inp in soup.find_all(["input", "textarea", "select"]):
+                        name = inp.get("name")
+                        if not name: continue
+                        if inp.name == "input":
+                            itype = inp.get("type", "text").lower()
+                            if itype in ["radio", "checkbox"]:
+                                if inp.has_attr("checked"): form_data[name] = inp.get("value", "")
+                            else:
+                                form_data[name] = inp.get("value", "")
+                        elif inp.name == "textarea":
+                            form_data[name] = inp.get_text()
+                        elif inp.name == "select":
+                            sel_opt = inp.find("option", selected=True)
+                            val = sel_opt.get("value") if sel_opt else ""
+                            if name == "sHour": s_hour = val or s_hour
+                            elif name == "sMin": s_min = val or s_min
+                            elif name == "eHour": e_hour = val or e_hour
+                            elif name == "eMin": e_min = val or e_min
+                            else: form_data[name] = val
+
+                try:
+                    form_data["startTime"] = f"{int(s_hour):02d}:{int(s_min):02d}"
+                    form_data["endTime"] = f"{int(e_hour):02d}:{int(e_min):02d}"
+                except Exception:
+                    form_data["startTime"] = "09:00"
+                    form_data["endTime"] = "18:00"
+
+                place_code = form_data.get("place", "9")
+                form_data["placeText"] = PLACE_NAMES.get(place_code, "프로젝트")
+
+                self._send_json(200, {
+                    "success": True,
+                    "schedule": form_data
+                })
+                return
+            except Exception as e:
+                self._send_json(500, {"success": False, "error": str(e)})
+                return
         if path.endswith("/address_book"):
             sidx = query.get("sIDX", ["669"])[0]
             raw_cookie = self.headers.get("X-Cookie", "")

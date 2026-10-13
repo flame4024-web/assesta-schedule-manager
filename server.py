@@ -112,7 +112,7 @@ class ScheduleHandler(http.server.SimpleHTTPRequestHandler):
             self.handle_get_calendar(query)
             return
 
-        if path == "/api/detail":
+        if path in ["/api/detail", "/api/schedule_detail"]:
             self.handle_get_detail(query)
             return
 
@@ -172,18 +172,49 @@ class ScheduleHandler(http.server.SimpleHTTPRequestHandler):
 
         url = f"{INTRANET_BASE}/schedule/schedule.asp?sIDX={sidx}&wdate={year}-{month}-01"
         try:
-            res = requests.get(url, headers=self._get_headers(cookie), timeout=10)
+            res = requests.get(url, headers=self._get_headers(cookie, sidx), timeout=10)
             res.encoding = "euc-kr"
             soup = BeautifulSoup(res.text, "html.parser")
 
             schedules = []
-            # View_Popup(idx, sIDX) 형식 onclick 요소 탐색
             for el in soup.find_all(attrs={"onclick": True}):
                 onclick = el.get("onclick", "")
-                m = re.search(r"View_Popup\((\d+)\s*,\s*(\d+)\)", onclick)
+                m = re.search(r"View_Popup\((\d+)\s*(?:,\s*(\d+))?\)", onclick)
                 if m:
                     idx = m.group(1)
-                    title = el.get_text(strip=True)
+                    title_short = el.get_text(strip=True)
+                    full_title = title_short
+                    writer = ""
+                    cc_addr = ""
+                    place_text = ""
+                    time_str = ""
+                    content = ""
+
+                    # onmouseover Detail_View 툴팁 파싱 (전체 제목 및 상세 데이터 추출)
+                    om = el.get("onmouseover", "")
+                    if "Detail_View" in om:
+                        m_detail = re.search(r"Detail_View\('(.*)'\);", om, re.DOTALL)
+                        if m_detail:
+                            inner_html = m_detail.group(1).replace(r"\'", "'")
+                            dsoup = BeautifulSoup(inner_html, "html.parser")
+                            for tr in dsoup.find_all("tr"):
+                                tds = tr.find_all("td")
+                                if len(tds) >= 2:
+                                    k = tds[0].get_text(strip=True).replace(":", "")
+                                    v = tds[1].get_text("\n", strip=True)
+                                    if "제목" in k and v:
+                                        full_title = v
+                                    elif "작성" in k:
+                                        writer = v
+                                    elif "참조" in k:
+                                        cc_addr = v
+                                    elif "구분" in k:
+                                        place_text = v
+                                    elif "시간" in k:
+                                        time_str = v
+                                    elif "내용" in k:
+                                        content = v
+
                     parent_td = el.find_parent("td")
                     date_val = None
                     if parent_td:
@@ -192,10 +223,27 @@ class ScheduleHandler(http.server.SimpleHTTPRequestHandler):
                         if dm:
                             date_val = f"{year}-{month}-{dm.group(1).zfill(2)}"
 
+                    # 시작시간, 종료시간 파싱 (예: "9시00분 ~ 18시00분")
+                    s_time = "09:00"
+                    e_time = "18:00"
+                    tm = re.search(r"(\d{1,2})시\s*(\d{1,2})분\s*~\s*(\d{1,2})시\s*(\d{1,2})분", time_str)
+                    if tm:
+                        s_time = f"{int(tm.group(1)):02d}:{int(tm.group(2)):02d}"
+                        e_time = f"{int(tm.group(3)):02d}:{int(tm.group(4)):02d}"
+
                     schedules.append({
                         "idx": idx,
-                        "title": title,
+                        "title": full_title,          # 전체 제목
+                        "title_short": title_short,    # 캘린더용 단축 제목
                         "date": date_val,
+                        "startTime": s_time,
+                        "endTime": e_time,
+                        "timeStr": time_str,
+                        "placeText": place_text,
+                        "place": PLACE_MAP.get(place_text, "9"),
+                        "writer": writer,
+                        "ccAddr": cc_addr,
+                        "content": content,
                         "sIDX": sidx
                     })
 
@@ -220,20 +268,60 @@ class ScheduleHandler(http.server.SimpleHTTPRequestHandler):
 
         url = f"{INTRANET_BASE}/schedule/schedule_view.asp?idx={idx}&sIDX={sidx}"
         try:
-            res = requests.get(url, headers=self._get_headers(cookie), timeout=10)
-            res.encoding = "euc-kr"
-            soup = BeautifulSoup(res.text, "html.parser")
+            res = requests.get(url, headers=self._get_headers(cookie, sidx), timeout=10)
+            soup = BeautifulSoup(res.content.decode("euc-kr", errors="replace"), "html.parser")
 
-            text = soup.get_text()
-            title = ""
-            h_tags = soup.find_all(["h1", "h2", "h3", "b", "strong"])
-            if h_tags:
-                title = h_tags[0].get_text(strip=True)
+            form_data = {
+                "idx": idx,
+                "sIDX": sidx,
+                "subject": "",
+                "writer": "",
+                "ccAddr": "",
+                "place": "9",
+                "startTime": "09:00",
+                "endTime": "18:00",
+                "content": ""
+            }
+
+            s_hour, s_min, e_hour, e_min = "9", "0", "18", "0"
+
+            for inp in soup.find_all(["input", "textarea", "select"]):
+                name = inp.get("name")
+                if not name:
+                    continue
+
+                if inp.name == "input":
+                    itype = inp.get("type", "text").lower()
+                    if itype in ["radio", "checkbox"]:
+                        if inp.has_attr("checked"):
+                            form_data[name] = inp.get("value", "")
+                    else:
+                        form_data[name] = inp.get("value", "")
+                elif inp.name == "textarea":
+                    form_data[name] = inp.get_text()
+                elif inp.name == "select":
+                    sel_opt = inp.find("option", selected=True)
+                    val = sel_opt.get("value") if sel_opt else ""
+                    if name == "sHour": s_hour = val or s_hour
+                    elif name == "sMin": s_min = val or s_min
+                    elif name == "eHour": e_hour = val or e_hour
+                    elif name == "eMin": e_min = val or e_min
+                    else: form_data[name] = val
+
+            # 시간 형식 포맷팅
+            try:
+                form_data["startTime"] = f"{int(s_hour):02d}:{int(s_min):02d}"
+                form_data["endTime"] = f"{int(e_hour):02d}:{int(e_min):02d}"
+            except Exception:
+                form_data["startTime"] = "09:00"
+                form_data["endTime"] = "18:00"
+
+            place_code = form_data.get("place", "9")
+            form_data["placeText"] = PLACE_NAMES.get(place_code, "프로젝트")
 
             self._send_json(200, {
                 "success": True,
-                "idx": idx,
-                "raw_text": text[:1000]
+                "schedule": form_data
             })
         except Exception as e:
             self._send_json(500, {"success": False, "error": str(e)})

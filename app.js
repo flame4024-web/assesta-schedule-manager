@@ -316,7 +316,7 @@
       dayEvents.forEach(evt => {
         const pill = document.createElement('div');
         pill.className = 'event-pill';
-        pill.textContent = evt.title;
+        pill.textContent = evt.title_short || evt.title;
         pill.title = `${evt.title} (클릭 시 상세/수정)`;
         pill.addEventListener('click', (e) => {
           e.stopPropagation();
@@ -1009,13 +1009,14 @@
     const filtered = state.schedules.filter(s => {
       if (!keyword) return true;
       return (s.title && s.title.toLowerCase().includes(keyword)) ||
+             (s.content && s.content.toLowerCase().includes(keyword)) ||
              (s.date && s.date.includes(keyword));
     });
 
     elements.manageTbody.innerHTML = '';
     if (filtered.length === 0) {
       elements.manageTbody.innerHTML = `
-        <tr><td colspan="4" class="text-center py-4">검색 조건에 맞는 일정이 없습니다.</td></tr>
+        <tr><td colspan="4" class="text-center py-4" style="color:var(--text-muted);">검색 조건에 맞는 일정이 없습니다.</td></tr>
       `;
       return;
     }
@@ -1024,9 +1025,12 @@
       const tr = document.createElement('tr');
       tr.innerHTML = `
         <td><code>#${item.idx}</code></td>
-        <td>${item.date || '-'}</td>
-        <td><strong>${item.title}</strong></td>
-        <td>
+        <td style="white-space:nowrap;">${item.date || '-'}</td>
+        <td style="white-space: normal; word-break: break-word; min-width: 280px; line-height: 1.45;">
+          <strong style="color:var(--text-primary); font-size:0.95rem;">${escapeHtml(item.title)}</strong>
+          ${item.content ? `<div style="font-size:0.8rem; color:var(--text-muted); margin-top:4px; max-height:42px; overflow:hidden; text-overflow:ellipsis; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical;">${escapeHtml(item.content)}</div>` : ''}
+        </td>
+        <td style="white-space:nowrap;">
           <button class="btn btn-outline btn-sm edit-btn" data-idx="${item.idx}">수정</button>
           <button class="btn btn-danger btn-sm delete-btn" data-idx="${item.idx}">삭제</button>
         </td>
@@ -1059,28 +1063,66 @@
     }
   }
 
-  function openScheduleDetailModal(item, isEdit = false) {
+  async function openScheduleDetailModal(item, isEdit = false) {
     elements.modalTitle.textContent = isEdit ? `일정 수정 (ID: ${item.idx})` : `일정 상세 (ID: ${item.idx})`;
+    
+    // 기본 프리필 데이터 (전체 제목 및 기존 정보)
+    const initTitle = item.title || item.subject || '';
+    const initDate = item.date || '';
+    const initStartTime = item.startTime || '09:00';
+    const initEndTime = item.endTime || '18:00';
+    const initPlace = item.place || '9';
+    const initWriter = item.writer || state.config.writer || '권민섭';
+    const initCc = item.ccAddr || '';
+    const initContent = item.content || '';
+
     elements.modalBody.innerHTML = `
       <form id="modalEditForm">
         <input type="hidden" id="modalIdx" value="${item.idx}">
         <div class="form-group">
-          <label>제목</label>
-          <input type="text" id="modalSubject" class="input-control" value="${item.title || ''}" required>
+          <label>일정 제목 <span class="req">*</span></label>
+          <input type="text" id="modalSubject" class="input-control" value="${escapeHtml(initTitle)}" required>
         </div>
-        <div class="form-group">
-          <label>일자</label>
-          <input type="date" id="modalDate" class="input-control" value="${item.date || ''}" required>
+        <div class="form-row grid-3">
+          <div class="form-group">
+            <label>일자 <span class="req">*</span></label>
+            <input type="date" id="modalDate" class="input-control" value="${initDate}" required>
+          </div>
+          <div class="form-group">
+            <label>시작 시간 <span class="req">*</span></label>
+            <input type="time" id="modalStartTime" class="input-control" value="${initStartTime}" required>
+          </div>
+          <div class="form-group">
+            <label>종료 시간 <span class="req">*</span></label>
+            <input type="time" id="modalEndTime" class="input-control" value="${initEndTime}" required>
+          </div>
         </div>
         <div class="form-row grid-2">
           <div class="form-group">
-            <label>시작 시간</label>
-            <input type="time" id="modalStartTime" class="input-control" value="09:00">
+            <label>구분</label>
+            <select id="modalPlace" class="input-control">
+              <option value="9" ${initPlace === '9' ? 'selected' : ''}>프로젝트 (9)</option>
+              <option value="3" ${initPlace === '3' ? 'selected' : ''}>업무 (3)</option>
+              <option value="1" ${initPlace === '1' ? 'selected' : ''}>내부미팅 (1)</option>
+              <option value="2" ${initPlace === '2' ? 'selected' : ''}>외부미팅 (2)</option>
+              <option value="10" ${initPlace === '10' ? 'selected' : ''}>내부교육 (10)</option>
+              <option value="4" ${initPlace === '4' ? 'selected' : ''}>외부교육 (4)</option>
+              <option value="8" ${initPlace === '8' ? 'selected' : ''}>근태 (8)</option>
+              <option value="11" ${initPlace === '11' ? 'selected' : ''}>기타 (11)</option>
+            </select>
           </div>
           <div class="form-group">
-            <label>종료 시간</label>
-            <input type="time" id="modalEndTime" class="input-control" value="18:00">
+            <label>작성자</label>
+            <input type="text" id="modalWriter" class="input-control" value="${escapeHtml(initWriter)}">
           </div>
+        </div>
+        <div class="form-group">
+          <label>참조자</label>
+          <input type="text" id="modalCcAddr" class="input-control" value="${escapeHtml(initCc)}" placeholder="예: 권민섭, 최화열 전무이사">
+        </div>
+        <div class="form-group">
+          <label>세부 내용 <span id="modalDetailLoading" style="font-size:0.75rem; color:var(--accent-primary); display:none;">(최신 세부정보 동기화 중...)</span></label>
+          <textarea id="modalContent" class="input-control textarea-control" rows="5" placeholder="세부 내용을 입력하세요.">${escapeHtml(initContent)}</textarea>
         </div>
         <div class="form-actions">
           <button type="button" class="btn btn-danger btn-sm" id="modalDeleteBtn">삭제하기</button>
@@ -1093,18 +1135,25 @@
     document.getElementById('modalCancelBtn').onclick = closeModal;
     document.getElementById('modalDeleteBtn').onclick = () => {
       closeModal();
-      handleDeleteSchedule(item.idx, item.title);
+      handleDeleteSchedule(item.idx, document.getElementById('modalSubject').value || item.title);
     };
 
     document.getElementById('modalEditForm').onsubmit = async (e) => {
       e.preventDefault();
+      const saveBtn = e.target.querySelector('button[type="submit"]');
+      saveBtn.disabled = true;
+      saveBtn.textContent = '저장 중...';
+
       const payload = {
         idx: item.idx,
         subject: document.getElementById('modalSubject').value.trim(),
         date: document.getElementById('modalDate').value,
         startTime: document.getElementById('modalStartTime').value,
         endTime: document.getElementById('modalEndTime').value,
-        writer: state.config.writer,
+        place: document.getElementById('modalPlace').value,
+        writer: document.getElementById('modalWriter').value.trim() || state.config.writer,
+        ccAddr: document.getElementById('modalCcAddr').value.trim(),
+        content: document.getElementById('modalContent').value.trim(),
         sIDX: state.config.sIDX,
         cookie: state.config.cookie
       };
@@ -1112,7 +1161,7 @@
       try {
         const res = await apiCall('/update', 'POST', payload);
         if (res.success) {
-          showToast('일정이 수정되었습니다.', 'success');
+          showToast('일정이 성공적으로 수정되었습니다.', 'success');
           closeModal();
           fetchCalendarData();
         } else {
@@ -1120,10 +1169,43 @@
         }
       } catch (err) {
         showToast('수정 통신 실패', 'error');
+      } finally {
+        saveBtn.disabled = false;
+        saveBtn.textContent = '변경사항 저장';
       }
     };
 
     elements.scheduleModal.style.display = 'flex';
+
+    // 백엔드 schedule_detail API를 비동기로 호출하여 인트라넷 원본 폼 데이터와 완벽 동기화
+    try {
+      const loadingBadge = document.getElementById('modalDetailLoading');
+      if (loadingBadge) loadingBadge.style.display = 'inline';
+
+      const res = await apiCall(`/schedule_detail?idx=${item.idx}&sIDX=${state.config.sIDX}`);
+      if (res && res.success && res.schedule) {
+        const detail = res.schedule;
+        const subjInput = document.getElementById('modalSubject');
+        const contentInput = document.getElementById('modalContent');
+        const writerInput = document.getElementById('modalWriter');
+        const ccInput = document.getElementById('modalCcAddr');
+        const placeSelect = document.getElementById('modalPlace');
+        const startTimeInput = document.getElementById('modalStartTime');
+        const endTimeInput = document.getElementById('modalEndTime');
+
+        if (subjInput && detail.subject) subjInput.value = detail.subject;
+        if (contentInput && detail.content !== undefined) contentInput.value = detail.content;
+        if (writerInput && detail.writer) writerInput.value = detail.writer;
+        if (ccInput && detail.ccAddr) ccInput.value = detail.ccAddr;
+        if (placeSelect && detail.place) placeSelect.value = detail.place;
+        if (startTimeInput && detail.startTime) startTimeInput.value = detail.startTime;
+        if (endTimeInput && detail.endTime) endTimeInput.value = detail.endTime;
+      }
+      if (loadingBadge) loadingBadge.style.display = 'none';
+    } catch (e) {
+      const loadingBadge = document.getElementById('modalDetailLoading');
+      if (loadingBadge) loadingBadge.style.display = 'none';
+    }
   }
 
   function closeModal() {
