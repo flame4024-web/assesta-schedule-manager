@@ -24,6 +24,17 @@ except ImportError:
 
 INTRANET_BASE = "https://it.assesta.com"
 
+PLACE_NAMES = {
+    "1": "내부미팅",
+    "2": "외부미팅",
+    "3": "업무",
+    "4": "외부교육",
+    "8": "근태",
+    "9": "프로젝트",
+    "10": "내부교육",
+    "11": "기타"
+}
+
 PLACE_MAP = {
     "내부미팅": "1",
     "외부미팅": "2",
