@@ -119,6 +119,20 @@
     fetchAddressBook();
   }
 
+  const DEFAULT_COOKIE = 'ASPSESSIONIDQSAABDBQ=ELGDCCCDCNPMNFKJHLICMEMG; autologin=1; BP%5FIDX=1; deptIDX=28; IDX=669; Manager%5Fn=N; saveID=mskwon; userGrade=5; userID=mskwon; userIDX=727; userName=%B1%C7%B9%CE%BC%87; userPass=1q2w3e4r1%21';
+
+  function formatCookieInput(rawInput) {
+    let val = (rawInput || '').trim().replace(/^["']|["']$/g, '');
+    if (!val) return DEFAULT_COOKIE;
+    if (val.length === 24 && /^[A-Z0-9]+$/.test(val)) {
+      return DEFAULT_COOKIE.replace(/ASPSESSIONIDQSAABDBQ=[A-Z0-9]+/, `ASPSESSIONIDQSAABDBQ=${val}`);
+    }
+    if (!val.includes('userIDX=')) {
+      return `${val}; autologin=1; BP%5FIDX=1; deptIDX=28; IDX=669; Manager%5Fn=N; saveID=mskwon; userGrade=5; userID=mskwon; userIDX=727; userName=%B1%C7%B9%CE%BC%87; userPass=1q2w3e4r1%21`;
+    }
+    return val;
+  }
+
   // --- 설정 로드 & 저장 ---
   function loadConfig() {
     const saved = localStorage.getItem('assesta_calendar_config');
@@ -129,6 +143,11 @@
         console.error(e);
       }
     }
+    if (!state.config.cookie) {
+      state.config.cookie = DEFAULT_COOKIE;
+    } else {
+      state.config.cookie = formatCookieInput(state.config.cookie);
+    }
     elements.setSidx.value = state.config.sIDX;
     elements.setWriter.value = state.config.writer;
     elements.setCookie.value = state.config.cookie;
@@ -137,14 +156,16 @@
   }
 
   function saveConfig() {
-    state.config.sIDX = elements.setSidx.value.trim();
-    state.config.writer = elements.setWriter.value.trim();
-    state.config.cookie = elements.setCookie.value.trim();
-    state.config.endpoint = elements.setEndpoint.value.trim();
+    state.config.sIDX = elements.setSidx.value.trim() || '669';
+    state.config.writer = elements.setWriter.value.trim() || '권민섭';
+    state.config.cookie = formatCookieInput(elements.setCookie.value);
+    state.config.endpoint = elements.setEndpoint.value.trim() || '/api';
+    elements.setCookie.value = state.config.cookie;
     localStorage.setItem('assesta_calendar_config', JSON.stringify(state.config));
     elements.regWriter.value = state.config.writer;
     showToast('설정이 브라우저에 저장되었습니다.', 'success');
   }
+
 
   // --- 테마 전환 ---
   function initTheme() {

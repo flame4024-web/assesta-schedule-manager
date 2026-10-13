@@ -40,6 +40,43 @@ PLACE_MAP = {
 }
 
 
+DEFAULT_AUTH_COOKIES = {
+    "autologin": "1",
+    "BP%5FIDX": "1",
+    "deptIDX": "28",
+    "IDX": "669",
+    "Manager%5Fn": "N",
+    "saveID": "mskwon",
+    "userGrade": "5",
+    "userID": "mskwon",
+    "userIDX": "727",
+    "userName": "%B1%C7%B9%CE%BC%87",
+    "userPass": "1q2w3e4r1%21",
+    "ASPSESSIONIDQSAABDBQ": "ELGDCCCDCNPMNFKJHLICMEMG"
+}
+
+
+def normalize_cookie(raw_cookie, sidx="669"):
+    raw = (raw_cookie or "").strip().replace('"', '').replace("'", "")
+    cookies = {}
+    if "=" in raw:
+        parts = [p.strip() for p in raw.split(";") if p.strip()]
+        for p in parts:
+            if "=" in p:
+                k, v = p.split("=", 1)
+                cookies[k.strip()] = v.strip()
+    elif len(raw) == 24 and raw.isupper() and raw.isalnum():
+        cookies["ASPSESSIONIDQSAABDBQ"] = raw
+    elif raw:
+        cookies["ASPSESSIONIDQSAABDBQ"] = raw
+
+    merged = dict(DEFAULT_AUTH_COOKIES)
+    if sidx:
+        merged["IDX"] = str(sidx)
+    merged.update(cookies)
+    return "; ".join([f"{k}={v}" for k, v in merged.items()])
+
+
 class ScheduleHandler(http.server.SimpleHTTPRequestHandler):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, directory=BASE_DIR, **kwargs)
@@ -117,18 +154,15 @@ class ScheduleHandler(http.server.SimpleHTTPRequestHandler):
 
     # --- API 로직 ---
 
-    def _get_headers(self, custom_cookie=None):
+    def _get_headers(self, custom_cookie=None, sidx="669"):
         headers = {
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0",
             "Referer": f"{INTRANET_BASE}/schedule/schedule.asp"
         }
         cookie = custom_cookie or self.headers.get("X-Cookie", "")
-        if cookie:
-            raw = cookie.strip().replace('"', '')
-            if "=" not in raw:
-                raw = f"ASPSESSIONIDQSAABDBQ={raw}; autologin=1; IDX=669; userID=mskwon; saveID=mskwon; deptIDX=28; userGrade=5; BP%5FIDX=1"
-            headers["Cookie"] = raw
+        headers["Cookie"] = normalize_cookie(cookie, sidx)
         return headers
+
 
     def handle_get_calendar(self, query):
         sidx = query.get("sIDX", ["669"])[0]
@@ -294,7 +328,7 @@ class ScheduleHandler(http.server.SimpleHTTPRequestHandler):
         try:
             # EUC-KR 인코딩으로 변환하여 POST 전송
             encoded_data = urllib.parse.urlencode(form_data, encoding="euc-kr")
-            headers = self._get_headers(cookie)
+            headers = self._get_headers(cookie, sidx)
             headers["Content-Type"] = "application/x-www-form-urlencoded"
 
             target_url = f"{INTRANET_BASE}/schedule/schedule_proc.asp"
@@ -332,7 +366,7 @@ class ScheduleHandler(http.server.SimpleHTTPRequestHandler):
 
         try:
             encoded_data = urllib.parse.urlencode(form_data, encoding="euc-kr")
-            headers = self._get_headers(cookie)
+            headers = self._get_headers(cookie, sidx)
             headers["Content-Type"] = "application/x-www-form-urlencoded"
 
             target_url = f"{INTRANET_BASE}/schedule/schedule_proc.asp"

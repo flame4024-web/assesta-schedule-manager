@@ -35,25 +35,45 @@ PLACE_MAP = {
 }
 
 
+DEFAULT_AUTH_COOKIES = {
+    "autologin": "1",
+    "BP%5FIDX": "1",
+    "deptIDX": "28",
+    "IDX": "669",
+    "Manager%5Fn": "N",
+    "saveID": "mskwon",
+    "userGrade": "5",
+    "userID": "mskwon",
+    "userIDX": "727",
+    "userName": "%B1%C7%B9%CE%BC%87",
+    "userPass": "1q2w3e4r1%21",
+    "ASPSESSIONIDQSAABDBQ": "ELGDCCCDCNPMNFKJHLICMEMG"
+}
+
+
 def normalize_cookie(raw_cookie, sidx="669"):
-    """사용자가 세션 값만 넣었거나 전체 쿠키를 넣었을 때 자동 완성"""
-    if not raw_cookie:
-        return ""
-    raw = raw_cookie.strip().replace('"', '')
+    """사용자가 24자리 세션키만 넣든, 특정 쿠키만 넣든, 전체 쿠키를 넣든 완벽한 인증 쿠키로 자동 완성"""
+    raw = (raw_cookie or "").strip().replace('"', '').replace("'", "")
+    
+    cookies = {}
     if "=" in raw:
-        # 이미 키=값 형태 (예: document.cookie 결과)
-        return raw
-    # 값만 넣은 경우 (예: ELGDCCCDCNPMNFKJHLICMEMG)
-    return (
-        f"ASPSESSIONIDQSAABDBQ={raw}; "
-        f"autologin=1; "
-        f"IDX={sidx}; "
-        f"userID=mskwon; "
-        f"saveID=mskwon; "
-        f"deptIDX=28; "
-        f"userGrade=5; "
-        f"BP%5FIDX=1"
-    )
+        parts = [p.strip() for p in raw.split(";") if p.strip()]
+        for p in parts:
+            if "=" in p:
+                k, v = p.split("=", 1)
+                cookies[k.strip()] = v.strip()
+    elif len(raw) == 24 and raw.isupper() and raw.isalnum():
+        cookies["ASPSESSIONIDQSAABDBQ"] = raw
+    elif raw:
+        cookies["ASPSESSIONIDQSAABDBQ"] = raw
+
+    # 기본 필수 인증 쿠키에 병합 (누락된 키 자동 보충)
+    merged = dict(DEFAULT_AUTH_COOKIES)
+    if sidx:
+        merged["IDX"] = str(sidx)
+    merged.update(cookies)
+    
+    return "; ".join([f"{k}={v}" for k, v in merged.items()])
 
 
 def make_request(url, method="GET", data=None, headers=None):
