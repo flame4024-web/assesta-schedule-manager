@@ -338,8 +338,15 @@ class ScheduleHandler(http.server.SimpleHTTPRequestHandler):
             text = res.text
             if "alert(" in text:
                 m = re.search(r"alert\(['\"](.*?)['\"]\)", text)
-                alert_msg = m.group(1) if m else "서버에서 거부되었습니다."
-                self._send_json(400, {"success": False, "message": alert_msg, "raw": text})
+                alert_msg = m.group(1) if m else "서버 응답"
+                if any(kw in alert_msg for kw in ["완료", "등록", "수정", "성공"]):
+                    self._send_json(200, {
+                        "success": True,
+                        "message": alert_msg,
+                        "data": form_data
+                    })
+                else:
+                    self._send_json(400, {"success": False, "message": alert_msg, "raw": text})
             else:
                 self._send_json(200, {
                     "success": True,
@@ -377,7 +384,10 @@ class ScheduleHandler(http.server.SimpleHTTPRequestHandler):
             if "alert(" in text:
                 m = re.search(r"alert\(['\"](.*?)['\"]\)", text)
                 alert_msg = m.group(1) if m else "삭제 실패"
-                self._send_json(400, {"success": False, "message": alert_msg})
+                if any(kw in alert_msg for kw in ["삭제", "완료", "성공"]):
+                    self._send_json(200, {"success": True, "message": alert_msg})
+                else:
+                    self._send_json(400, {"success": False, "message": alert_msg})
             else:
                 self._send_json(200, {"success": True, "message": f"일정(ID: {idx})이 삭제되었습니다."})
         except Exception as e:

@@ -282,7 +282,10 @@ class handler(BaseHTTPRequestHandler):
                 if "alert(" in text:
                     m = re.search(r"alert\(['\"](.*?)['\"]\)", text)
                     alert_msg = m.group(1) if m else "실패"
-                    self._send_json(400, {"success": False, "message": alert_msg, "raw": text[:200]})
+                    if any(kw in alert_msg for kw in ["완료", "등록", "수정", "성공"]):
+                        self._send_json(200, {"success": True, "message": alert_msg, "data": form_data})
+                    else:
+                        self._send_json(400, {"success": False, "message": alert_msg, "raw": text[:200]})
                 else:
                     self._send_json(200, {"success": True, "message": "저장 완료", "data": form_data})
             except Exception as e:
@@ -296,7 +299,11 @@ class handler(BaseHTTPRequestHandler):
                 status, text = make_request(f"{INTRANET_BASE}/schedule/schedule_proc.asp", method="POST", data=encoded, headers=headers)
                 if "alert(" in text:
                     m = re.search(r"alert\(['\"](.*?)['\"]\)", text)
-                    self._send_json(400, {"success": False, "message": m.group(1) if m else "실패"})
+                    msg = m.group(1) if m else "실패"
+                    if any(kw in msg for kw in ["삭제", "완료", "성공"]):
+                        self._send_json(200, {"success": True, "message": msg})
+                    else:
+                        self._send_json(400, {"success": False, "message": msg})
                 else:
                     self._send_json(200, {"success": True, "message": "삭제 완료"})
             except Exception as e:
