@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
 Vercel Serverless Function Handler for Assesta Intranet Proxy
-(Zero-dependency fallback support for instant cold-starts)
+(Zero-dependency fallback + Smart Cookie Auto-formatter)
 """
 
 from http.server import BaseHTTPRequestHandler
@@ -15,6 +15,11 @@ try:
     import requests
 except ImportError:
     requests = None
+
+try:
+    from bs4 import BeautifulSoup
+except ImportError:
+    BeautifulSoup = None
 
 INTRANET_BASE = "https://it.assesta.com"
 
@@ -30,8 +35,28 @@ PLACE_MAP = {
 }
 
 
+def normalize_cookie(raw_cookie, sidx="669"):
+    """사용자가 세션 값만 넣었거나 전체 쿠키를 넣었을 때 자동 완성"""
+    if not raw_cookie:
+        return ""
+    raw = raw_cookie.strip().replace('"', '')
+    if "=" in raw:
+        # 이미 키=값 형태 (예: document.cookie 결과)
+        return raw
+    # 값만 넣은 경우 (예: ELGDCCCDCNPMNFKJHLICMEMG)
+    return (
+        f"ASPSESSIONIDQSAABDBQ={raw}; "
+        f"autologin=1; "
+        f"IDX={sidx}; "
+        f"userID=mskwon; "
+        f"saveID=mskwon; "
+        f"deptIDX=28; "
+        f"userGrade=5; "
+        f"BP%5FIDX=1"
+    )
+
+
 def make_request(url, method="GET", data=None, headers=None):
-    """requests 우선 사용, 미설치 시 urllib 표준 라이브러리 fallback"""
     headers = headers or {}
     if requests is not None:
         if method == "POST":
@@ -45,7 +70,6 @@ def make_request(url, method="GET", data=None, headers=None):
             text = res.content.decode("euc-kr", errors="replace")
         return res.status_code, text
 
-    # urllib fallback
     ctx = ssl.create_default_context()
     ctx.check_hostname = False
     ctx.verify_mode = ssl.CERT_NONE
@@ -98,7 +122,8 @@ class handler(BaseHTTPRequestHandler):
             sidx = query.get("sIDX", ["669"])[0]
             year = query.get("year", ["2026"])[0]
             month = query.get("month", ["10"])[0].zfill(2)
-            cookie = self.headers.get("X-Cookie", "")
+            raw_cookie = self.headers.get("X-Cookie", "")
+            cookie = normalize_cookie(raw_cookie, sidx)
 
             url = f"{INTRANET_BASE}/schedule/schedule.asp?sIDX={sidx}&wdate={year}-{month}-01"
             headers = {
@@ -111,34 +136,42 @@ class handler(BaseHTTPRequestHandler):
             try:
                 status, text = make_request(url, method="GET", headers=headers)
                 schedules = []
-                # View_Popup(idx, sIDX) 정규식 파싱
-                pattern = r"View_Popup\((\d+)\s*,\s*(\d+)\)"
-                matches = re.finditer(r"<[^>]*onclick=[\"']([^\"']*View_Popup\(\d+[^\"']*)[\"'][^>]*>(.*?)<\/[^>]+>", text, re.IGNORECASE | re.DOTALL)
-                
-                for m in matches:
-                    onclick_val = m.group(1)
-                    title_raw = re.sub(r"<[^>]+>", "", m.group(2)).strip()
-                    om = re.search(pattern, onclick_val)
-                    if om:
-                        idx = om.group(1)
+
+                if BeautifulSoup is not None:
+                    soup = BeautifulSoup(text, "html.parser")
+                    for el in soup.find_all(attrs={"onclick": True}):
+                        oc = el.get("onclick", "")
+                        om = re.search(r"View_Popup\((\d+)\)", oc)
+                        if om:
+                            idx = om.group(1)
+                            title = el.get_text(strip=True)
+                            td = el.find_parent("td")
+                            date_val = None
+                            if td:
+                                # 같은 TD 또는 주변에서 날짜 찾기
+                                lines = [l.strip() for l in td.get_text().splitlines() if l.strip()]
+                                for line in lines:
+                                    if line.isdigit() and 1 <= int(line) <= 31:
+                                        date_val = f"{year}-{month}-{line.zfill(2)}"
+                                        break
+                            schedules.append({
+                                "idx": idx,
+                                "title": title,
+                                "date": date_val,
+                                "sIDX": sidx
+                            })
+                else:
+                    # 정규식 fallback
+                    matches = re.finditer(r"View_Popup\((\d+)\)[^>]*>(.*?)<\/", text, re.IGNORECASE)
+                    for m in matches:
+                        idx = m.group(1)
+                        title = re.sub(r"<[^>]+>", "", m.group(2)).strip()
                         schedules.append({
                             "idx": idx,
-                            "title": title_raw,
+                            "title": title,
                             "date": None,
                             "sIDX": sidx
                         })
-
-                # 백업 단순 정규식
-                if not schedules:
-                    for om in re.finditer(pattern, text):
-                        idx = om.group(1)
-                        if not any(s["idx"] == idx for s in schedules):
-                            schedules.append({
-                                "idx": idx,
-                                "title": f"일정 #{idx}",
-                                "date": None,
-                                "sIDX": sidx
-                            })
 
                 self._send_json(200, {
                     "success": True,
@@ -178,9 +211,12 @@ class handler(BaseHTTPRequestHandler):
         except Exception:
             payload = {}
 
-        cookie = payload.get("cookie") or self.headers.get("X-Cookie", "")
+        sidx = str(payload.get("sIDX", "669"))
+        raw_cookie = payload.get("cookie") or self.headers.get("X-Cookie", "")
+        cookie = normalize_cookie(raw_cookie, sidx)
+
         headers = {
-            "User-Agent": "Mozilla/5.0",
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0",
             "Referer": f"{INTRANET_BASE}/schedule/schedule.asp",
             "Content-Type": "application/x-www-form-urlencoded"
         }
@@ -189,7 +225,6 @@ class handler(BaseHTTPRequestHandler):
 
         if path.endswith("/register") or path.endswith("/update"):
             mode = "MOD" if path.endswith("/update") else "REG"
-            sidx = str(payload.get("sIDX", "669"))
             date_str = payload.get("date", "")
             parts = date_str.split("-")
             year = parts[0] if len(parts) == 3 else "2026"
@@ -205,17 +240,17 @@ class handler(BaseHTTPRequestHandler):
             form_data = {
                 "mode": mode,
                 "sIDX": sidx,
-                "year": year,
-                "month": month,
-                "day": day,
+                "year": str(int(year)),
+                "month": str(int(month)),
+                "day": str(int(day)),
                 "subject": payload.get("subject", ""),
                 "writer": payload.get("writer", "권민섭"),
                 "ccAddr": payload.get("ccAddr", ""),
                 "place": place_val,
-                "sHour": s_time[0] if s_time else "9",
-                "sMin": s_time[1] if len(s_time) > 1 else "0",
-                "eHour": e_time[0] if e_time else "18",
-                "eMin": e_time[1] if len(e_time) > 1 else "0",
+                "sHour": str(int(s_time[0])) if s_time else "9",
+                "sMin": str(int(s_time[1])) if len(s_time) > 1 else "0",
+                "eHour": str(int(e_time[0])) if e_time else "18",
+                "eMin": str(int(e_time[1])) if len(e_time) > 1 else "0",
                 "content": payload.get("content", "")
             }
             if mode == "MOD" and "idx" in payload:
@@ -226,7 +261,8 @@ class handler(BaseHTTPRequestHandler):
                 status, text = make_request(f"{INTRANET_BASE}/schedule/schedule_proc.asp", method="POST", data=encoded, headers=headers)
                 if "alert(" in text:
                     m = re.search(r"alert\(['\"](.*?)['\"]\)", text)
-                    self._send_json(400, {"success": False, "message": m.group(1) if m else "실패"})
+                    alert_msg = m.group(1) if m else "실패"
+                    self._send_json(400, {"success": False, "message": alert_msg, "raw": text[:200]})
                 else:
                     self._send_json(200, {"success": True, "message": "저장 완료", "data": form_data})
             except Exception as e:
@@ -235,7 +271,6 @@ class handler(BaseHTTPRequestHandler):
 
         if path.endswith("/delete"):
             idx = str(payload.get("idx", ""))
-            sidx = str(payload.get("sIDX", "669"))
             try:
                 encoded = urllib.parse.urlencode({"mode": "DEL", "idx": idx, "sIDX": sidx}, encoding="euc-kr").encode("euc-kr")
                 status, text = make_request(f"{INTRANET_BASE}/schedule/schedule_proc.asp", method="POST", data=encoded, headers=headers)

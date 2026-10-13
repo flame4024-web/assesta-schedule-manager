@@ -119,12 +119,15 @@ class ScheduleHandler(http.server.SimpleHTTPRequestHandler):
 
     def _get_headers(self, custom_cookie=None):
         headers = {
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0",
             "Referer": f"{INTRANET_BASE}/schedule/schedule.asp"
         }
         cookie = custom_cookie or self.headers.get("X-Cookie", "")
         if cookie:
-            headers["Cookie"] = cookie
+            raw = cookie.strip().replace('"', '')
+            if "=" not in raw:
+                raw = f"ASPSESSIONIDQSAABDBQ={raw}; autologin=1; IDX=669; userID=mskwon; saveID=mskwon; deptIDX=28; userGrade=5; BP%5FIDX=1"
+            headers["Cookie"] = raw
         return headers
 
     def handle_get_calendar(self, query):
