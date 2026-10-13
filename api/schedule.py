@@ -227,18 +227,22 @@ class handler(BaseHTTPRequestHandler):
             try:
                 status, text = make_request(url, method="GET", headers=headers)
                 if "addrBook" in text:
-                    parsed_book = []
-                    options = re.findall(r'<option[^>]*value=[\'"]?(\d+)[\'"]?[^>]*>(.*?)</option>', text, re.IGNORECASE)
-                    for val, name in options:
-                        val = val.strip()
-                        name = re.sub(r'<[^>]+>', '', name).strip()
-                        if name and val:
-                            is_team = any(k in name for k in ['팀', '센터', '소장', '부대표', '대표', '일정', '교육', '세미나', 'MBTI', '스튜디오', 'ZOOM', '공용'])
-                            parsed_book.append({"id": val, "name": name, "category": "team" if is_team else "member"})
-                    if parsed_book:
-                        addr_book = parsed_book
+                    sel_match = re.search(r'<select[^>]*name=[\'"]?addrBook[\'"]?[^>]*>(.*?)</select>', text, re.IGNORECASE | re.DOTALL)
+                    if sel_match:
+                        sel_html = sel_match.group(1)
+                        parsed_book = []
+                        options = re.findall(r'<option[^>]*value=[\'"]?(\d+)[\'"]?[^>]*>(.*?)</option>', sel_html, re.IGNORECASE)
+                        for val, name in options:
+                            val = val.strip()
+                            name = re.sub(r'<[^>]+>', '', name).strip()
+                            if name and val:
+                                is_team = any(k in name for k in ['팀', '센터', '소장', '부대표', '대표', '일정', '교육', '세미나', 'MBTI', '스튜디오', 'ZOOM', '공용'])
+                                parsed_book.append({"id": val, "name": name, "category": "team" if is_team else "member"})
+                        if parsed_book:
+                            addr_book = parsed_book
             except Exception:
                 pass
+
 
             self._send_json(200, {"success": True, "address_book": addr_book, "count": len(addr_book)})
             return
