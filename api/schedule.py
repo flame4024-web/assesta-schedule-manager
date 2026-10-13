@@ -1,14 +1,20 @@
 # -*- coding: utf-8 -*-
 """
 Vercel Serverless Function Handler for Assesta Intranet Proxy
+(Zero-dependency fallback support for instant cold-starts)
 """
 
 from http.server import BaseHTTPRequestHandler
 import json
 import urllib.parse
+import urllib.request
+import ssl
 import re
-import requests
-from bs4 import BeautifulSoup
+
+try:
+    import requests
+except ImportError:
+    requests = None
 
 INTRANET_BASE = "https://it.assesta.com"
 
@@ -22,6 +28,39 @@ PLACE_MAP = {
     "내부교육": "10",
     "기타": "11"
 }
+
+
+def make_request(url, method="GET", data=None, headers=None):
+    """requests 우선 사용, 미설치 시 urllib 표준 라이브러리 fallback"""
+    headers = headers or {}
+    if requests is not None:
+        if method == "POST":
+            res = requests.post(url, data=data, headers=headers, timeout=10)
+        else:
+            res = requests.get(url, headers=headers, timeout=10)
+        try:
+            res.encoding = "euc-kr"
+            text = res.text
+        except Exception:
+            text = res.content.decode("euc-kr", errors="replace")
+        return res.status_code, text
+
+    # urllib fallback
+    ctx = ssl.create_default_context()
+    ctx.check_hostname = False
+    ctx.verify_mode = ssl.CERT_NONE
+
+    req = urllib.request.Request(url, data=data, headers=headers, method=method)
+    try:
+        with urllib.request.urlopen(req, context=ctx, timeout=10) as resp:
+            content = resp.read()
+            text = content.decode("euc-kr", errors="replace")
+            return resp.status, text
+    except urllib.error.HTTPError as e:
+        content = e.read()
+        text = content.decode("euc-kr", errors="replace")
+        return e.code, text
+
 
 class handler(BaseHTTPRequestHandler):
     def _send_json(self, status_code, data):
@@ -48,7 +87,11 @@ class handler(BaseHTTPRequestHandler):
         query = urllib.parse.parse_qs(parsed.query)
 
         if path.endswith("/status"):
-            self._send_json(200, {"status": "ok", "platform": "vercel-serverless"})
+            self._send_json(200, {
+                "status": "ok",
+                "platform": "vercel-serverless",
+                "requests_installed": requests is not None
+            })
             return
 
         if path.endswith("/calendar"):
@@ -58,33 +101,52 @@ class handler(BaseHTTPRequestHandler):
             cookie = self.headers.get("X-Cookie", "")
 
             url = f"{INTRANET_BASE}/schedule/schedule.asp?sIDX={sidx}&wdate={year}-{month}-01"
+            headers = {
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0",
+                "Referer": f"{INTRANET_BASE}/schedule/schedule.asp"
+            }
+            if cookie:
+                headers["Cookie"] = cookie
+
             try:
-                headers = {
-                    "User-Agent": "Mozilla/5.0",
-                    "Referer": f"{INTRANET_BASE}/schedule/schedule.asp"
-                }
-                if cookie:
-                    headers["Cookie"] = cookie
-                res = requests.get(url, headers=headers, timeout=10)
-                res.encoding = "euc-kr"
-                soup = BeautifulSoup(res.text, "html.parser")
-
+                status, text = make_request(url, method="GET", headers=headers)
                 schedules = []
-                for el in soup.find_all(attrs={"onclick": True}):
-                    onclick = el.get("onclick", "")
-                    m = re.search(r"View_Popup\((\d+)\s*,\s*(\d+)\)", onclick)
-                    if m:
-                        idx = m.group(1)
-                        title = el.get_text(strip=True)
-                        parent_td = el.find_parent("td")
-                        date_val = None
-                        if parent_td:
-                            dm = re.search(r"\b(\d{1,2})\b", parent_td.get_text())
-                            if dm:
-                                date_val = f"{year}-{month}-{dm.group(1).zfill(2)}"
-                        schedules.append({"idx": idx, "title": title, "date": date_val, "sIDX": sidx})
+                # View_Popup(idx, sIDX) 정규식 파싱
+                pattern = r"View_Popup\((\d+)\s*,\s*(\d+)\)"
+                matches = re.finditer(r"<[^>]*onclick=[\"']([^\"']*View_Popup\(\d+[^\"']*)[\"'][^>]*>(.*?)<\/[^>]+>", text, re.IGNORECASE | re.DOTALL)
+                
+                for m in matches:
+                    onclick_val = m.group(1)
+                    title_raw = re.sub(r"<[^>]+>", "", m.group(2)).strip()
+                    om = re.search(pattern, onclick_val)
+                    if om:
+                        idx = om.group(1)
+                        schedules.append({
+                            "idx": idx,
+                            "title": title_raw,
+                            "date": None,
+                            "sIDX": sidx
+                        })
 
-                self._send_json(200, {"success": True, "year": year, "month": month, "schedules": schedules})
+                # 백업 단순 정규식
+                if not schedules:
+                    for om in re.finditer(pattern, text):
+                        idx = om.group(1)
+                        if not any(s["idx"] == idx for s in schedules):
+                            schedules.append({
+                                "idx": idx,
+                                "title": f"일정 #{idx}",
+                                "date": None,
+                                "sIDX": sidx
+                            })
+
+                self._send_json(200, {
+                    "success": True,
+                    "year": year,
+                    "month": month,
+                    "schedules": schedules,
+                    "cookie_provided": bool(cookie)
+                })
             except Exception as e:
                 self._send_json(500, {"success": False, "error": str(e)})
             return
@@ -97,9 +159,8 @@ class handler(BaseHTTPRequestHandler):
                 if m:
                     csv_url = f"https://docs.google.com/spreadsheets/d/{m.group(1)}/gviz/tq?tqx=out:csv"
             try:
-                res = requests.get(csv_url, timeout=10)
-                res.encoding = "utf-8"
-                self._send_json(200, {"success": True, "csv_data": res.text})
+                status, text = make_request(csv_url, method="GET")
+                self._send_json(200, {"success": True, "csv_data": text})
             except Exception as e:
                 self._send_json(500, {"success": False, "error": str(e)})
             return
@@ -162,10 +223,9 @@ class handler(BaseHTTPRequestHandler):
 
             try:
                 encoded = urllib.parse.urlencode(form_data, encoding="euc-kr").encode("euc-kr")
-                res = requests.post(f"{INTRANET_BASE}/schedule/schedule_proc.asp", data=encoded, headers=headers, timeout=10)
-                res.encoding = "euc-kr"
-                if "alert(" in res.text:
-                    m = re.search(r"alert\(['\"](.*?)['\"]\)", res.text)
+                status, text = make_request(f"{INTRANET_BASE}/schedule/schedule_proc.asp", method="POST", data=encoded, headers=headers)
+                if "alert(" in text:
+                    m = re.search(r"alert\(['\"](.*?)['\"]\)", text)
                     self._send_json(400, {"success": False, "message": m.group(1) if m else "실패"})
                 else:
                     self._send_json(200, {"success": True, "message": "저장 완료", "data": form_data})
@@ -178,10 +238,9 @@ class handler(BaseHTTPRequestHandler):
             sidx = str(payload.get("sIDX", "669"))
             try:
                 encoded = urllib.parse.urlencode({"mode": "DEL", "idx": idx, "sIDX": sidx}, encoding="euc-kr").encode("euc-kr")
-                res = requests.post(f"{INTRANET_BASE}/schedule/schedule_proc.asp", data=encoded, headers=headers, timeout=10)
-                res.encoding = "euc-kr"
-                if "alert(" in res.text:
-                    m = re.search(r"alert\(['\"](.*?)['\"]\)", res.text)
+                status, text = make_request(f"{INTRANET_BASE}/schedule/schedule_proc.asp", method="POST", data=encoded, headers=headers)
+                if "alert(" in text:
+                    m = re.search(r"alert\(['\"](.*?)['\"]\)", text)
                     self._send_json(400, {"success": False, "message": m.group(1) if m else "실패"})
                 else:
                     self._send_json(200, {"success": True, "message": "삭제 완료"})
