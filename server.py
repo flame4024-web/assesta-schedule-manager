@@ -408,7 +408,7 @@ class ScheduleHandler(http.server.SimpleHTTPRequestHandler):
         cookie = payload.get("cookie") or self.headers.get("X-Cookie", "")
         sidx = str(payload.get("sIDX", "669"))
 
-        date_str = str(payload.get("date", "")).replace("/", "-").replace(".", "-")
+        date_str = str(payload.get("date") or payload.get("calDate") or "").replace("/", "-").replace(".", "-")
         parts = date_str.split("-")
         if len(parts) == 3:
             year, month, day = str(int(parts[0])), str(int(parts[1])), str(int(parts[2]))

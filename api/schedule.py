@@ -434,7 +434,7 @@ class handler(BaseHTTPRequestHandler):
 
         if path.endswith("/register") or path.endswith("/update"):
             mode = "EDIT" if path.endswith("/update") else "REG"
-            date_str = str(payload.get("date", "")).replace("/", "-").replace(".", "-")
+            date_str = str(payload.get("date") or payload.get("calDate") or "").replace("/", "-").replace(".", "-")
 
             parts = date_str.split("-")
             year = parts[0] if len(parts) == 3 else "2026"
