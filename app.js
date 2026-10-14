@@ -711,18 +711,48 @@
     if (rows.length < 2) return [];
 
     // 헤더 정제
-    const headers = rows[0].map(h => h.trim().replace(/^["']|["']$/g, ''));
+    const rawHeaders = rows[0].map(h => h.trim().replace(/^["']|["']$/g, ''));
     const result = [];
+
+    // 헤더 인덱스 탐색 헬퍼 (다양한 표기 유연 지원)
+    function findHeaderIdx(aliases) {
+      for (let i = 0; i < rawHeaders.length; i++) {
+        const clean = rawHeaders[i].replace(/\s+/g, '').toLowerCase();
+        for (const alias of aliases) {
+          if (clean === alias.toLowerCase()) return i;
+        }
+      }
+      return -1;
+    }
+
+    const idxDate = findHeaderIdx(['일자', '날짜', 'date', '일시', '일']);
+    const idxStartTime = findHeaderIdx(['시작시간', '시작', 'starttime', 'start']);
+    const idxEndTime = findHeaderIdx(['종료시간', '종료', 'endtime', 'end']);
+    const idxPlace = findHeaderIdx(['구분', '분류', 'place', '카테고리', '장소']);
+    const idxSubject = findHeaderIdx(['일정제목', '제목', '일정', 'subject', 'title', '일정명']);
+    const idxContent = findHeaderIdx(['세부내용', '내용', 'content', '상세', '세부', '비고']);
+    const idxCc = findHeaderIdx(['참조자', '참조', 'ccaddr', 'cc']);
 
     for (let i = 1; i < rows.length; i++) {
       const values = rows[i];
       const rowObj = {};
-      headers.forEach((h, idx) => {
-        rowObj[h] = values[idx] || '';
+
+      // 1순위: 별칭 매핑된 헤더 탐색
+      rowObj['일자'] = idxDate >= 0 ? (values[idxDate] || '') : (values[1] || '');
+      rowObj['시작시간'] = idxStartTime >= 0 ? (values[idxStartTime] || '') : (values[2] || '');
+      rowObj['종료시간'] = idxEndTime >= 0 ? (values[idxEndTime] || '') : (values[3] || '');
+      rowObj['구분'] = idxPlace >= 0 ? (values[idxPlace] || '') : (values[4] || '');
+      rowObj['일정제목'] = idxSubject >= 0 ? (values[idxSubject] || '') : (values[5] || '');
+      rowObj['세부내용'] = idxContent >= 0 ? (values[idxContent] || '') : (values[6] || '');
+      rowObj['참조자'] = idxCc >= 0 ? (values[idxCc] || '') : (values[7] || '');
+
+      // 원본 헤더 키로도 저장
+      rawHeaders.forEach((h, idx) => {
+        if (!rowObj[h]) rowObj[h] = values[idx] || '';
       });
 
       // 필수값 검증: 일자 또는 제목 중 하나라도 있어야 유효 데이터로 간주
-      const dateVal = rowObj['일자'] || rowObj['date'] || '';
+      const dateVal = rowObj['일자'] || rowObj['날짜'] || rowObj['date'] || '';
       const subjectVal = rowObj['일정제목'] || rowObj['제목'] || rowObj['subject'] || '';
       if (dateVal || subjectVal) {
         result.push(rowObj);
@@ -734,7 +764,9 @@
 
   function displayBulkPreview(rows) {
     state.bulkList = rows.map((r, index) => {
-      const date = r['일자'] || r['date'] || '';
+      let rawDate = (r['일자'] || r['날짜'] || r['date'] || '').trim();
+      // 날짜 슬래시(/) 및 점(.)을 하이픈(-)으로 정규화 (예: 2026/10/14 -> 2026-10-14)
+      const date = rawDate.replace(/\//g, '-').replace(/\./g, '-');
       const sTime = r['시작시간'] || r['startTime'] || '09:00';
       const eTime = r['종료시간'] || r['endTime'] || '18:00';
       const placeText = r['구분'] || r['place'] || '프로젝트';
@@ -761,6 +793,7 @@
     renderBulkTable();
     elements.bulkPreviewSection.style.display = 'block';
   }
+
 
   function renderBulkTable() {
     elements.bulkPreviewTbody.innerHTML = '';

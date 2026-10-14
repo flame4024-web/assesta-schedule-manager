@@ -376,7 +376,9 @@ class ScheduleHandler(http.server.SimpleHTTPRequestHandler):
             m = re.search(r"/spreadsheets/d/([a-zA-Z0-9-_]+)", sheet_url)
             if m:
                 sheet_id = m.group(1)
-                csv_url = f"https://docs.google.com/spreadsheets/d/{sheet_id}/gviz/tq?tqx=out:csv"
+                gid_match = re.search(r"[#&?]gid=([0-9]+)", sheet_url)
+                gid_param = f"&gid={gid_match.group(1)}" if gid_match else ""
+                csv_url = f"https://docs.google.com/spreadsheets/d/{sheet_id}/gviz/tq?tqx=out:csv{gid_param}"
 
         try:
             res = requests.get(csv_url, timeout=10)
@@ -385,14 +387,16 @@ class ScheduleHandler(http.server.SimpleHTTPRequestHandler):
         except Exception as e:
             self._send_json(500, {"success": False, "error": str(e)})
 
+
     def handle_register(self, payload, mode="REG"):
         cookie = payload.get("cookie") or self.headers.get("X-Cookie", "")
         sidx = str(payload.get("sIDX", "669"))
 
-        date_str = payload.get("date", "")
+        date_str = str(payload.get("date", "")).replace("/", "-").replace(".", "-")
         parts = date_str.split("-")
         if len(parts) == 3:
             year, month, day = str(int(parts[0])), str(int(parts[1])), str(int(parts[2]))
+
         else:
             year = str(payload.get("year", "2026"))
             month = str(payload.get("month", "10"))

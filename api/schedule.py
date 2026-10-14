@@ -88,7 +88,7 @@ def normalize_cookie(raw_cookie, sidx="669"):
     return "; ".join([f"{k}={v}" for k, v in merged.items()])
 
 
-def make_request(url, method="GET", data=None, headers=None):
+def make_request(url, method="GET", data=None, headers=None, encoding="euc-kr"):
     headers = headers or {}
     if requests is not None:
         if method == "POST":
@@ -96,10 +96,10 @@ def make_request(url, method="GET", data=None, headers=None):
         else:
             res = requests.get(url, headers=headers, timeout=10)
         try:
-            res.encoding = "euc-kr"
+            res.encoding = encoding
             text = res.text
         except Exception:
-            text = res.content.decode("euc-kr", errors="replace")
+            text = res.content.decode(encoding, errors="replace")
         return res.status_code, text
 
     ctx = ssl.create_default_context()
@@ -110,12 +110,13 @@ def make_request(url, method="GET", data=None, headers=None):
     try:
         with urllib.request.urlopen(req, context=ctx, timeout=10) as resp:
             content = resp.read()
-            text = content.decode("euc-kr", errors="replace")
+            text = content.decode(encoding, errors="replace")
             return resp.status, text
     except urllib.error.HTTPError as e:
         content = e.read()
-        text = content.decode("euc-kr", errors="replace")
+        text = content.decode(encoding, errors="replace")
         return e.code, text
+
 
 
 class handler(BaseHTTPRequestHandler):
@@ -379,13 +380,17 @@ class handler(BaseHTTPRequestHandler):
             if "docs.google.com/spreadsheets" in sheet_url:
                 m = re.search(r"/spreadsheets/d/([a-zA-Z0-9-_]+)", sheet_url)
                 if m:
-                    csv_url = f"https://docs.google.com/spreadsheets/d/{m.group(1)}/gviz/tq?tqx=out:csv"
+                    sheet_id = m.group(1)
+                    gid_match = re.search(r"[#&?]gid=([0-9]+)", sheet_url)
+                    gid_param = f"&gid={gid_match.group(1)}" if gid_match else ""
+                    csv_url = f"https://docs.google.com/spreadsheets/d/{sheet_id}/gviz/tq?tqx=out:csv{gid_param}"
             try:
-                status, text = make_request(csv_url, method="GET")
+                status, text = make_request(csv_url, method="GET", encoding="utf-8")
                 self._send_json(200, {"success": True, "csv_data": text})
             except Exception as e:
                 self._send_json(500, {"success": False, "error": str(e)})
             return
+
 
         self._send_json(404, {"error": "Not Found"})
 
@@ -414,11 +419,12 @@ class handler(BaseHTTPRequestHandler):
 
         if path.endswith("/register") or path.endswith("/update"):
             mode = "MOD" if path.endswith("/update") else "REG"
-            date_str = payload.get("date", "")
+            date_str = str(payload.get("date", "")).replace("/", "-").replace(".", "-")
             parts = date_str.split("-")
             year = parts[0] if len(parts) == 3 else "2026"
             month = parts[1] if len(parts) == 3 else "10"
             day = parts[2] if len(parts) == 3 else "1"
+
 
             s_time = payload.get("startTime", "09:00").split(":")
             e_time = payload.get("endTime", "18:00").split(":")
