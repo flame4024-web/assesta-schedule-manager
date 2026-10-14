@@ -158,8 +158,9 @@ class ScheduleHandler(http.server.SimpleHTTPRequestHandler):
             return
 
         if path == "/api/update":
-            self.handle_register(payload, mode="MOD")
+            self.handle_register(payload, mode="EDIT")
             return
+
 
         if path == "/api/delete":
             self.handle_delete(payload)
@@ -447,8 +448,9 @@ class ScheduleHandler(http.server.SimpleHTTPRequestHandler):
             "content": payload.get("content", "")
         }
 
-        if mode == "MOD" and "idx" in payload:
+        if (mode in ("MOD", "EDIT")) and "idx" in payload:
             form_data["idx"] = str(payload["idx"])
+
 
         try:
             # EUC-KR 인코딩으로 변환하여 POST 전송

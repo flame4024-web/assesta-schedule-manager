@@ -433,8 +433,9 @@ class handler(BaseHTTPRequestHandler):
             headers["Cookie"] = cookie
 
         if path.endswith("/register") or path.endswith("/update"):
-            mode = "MOD" if path.endswith("/update") else "REG"
+            mode = "EDIT" if path.endswith("/update") else "REG"
             date_str = str(payload.get("date", "")).replace("/", "-").replace(".", "-")
+
             parts = date_str.split("-")
             year = parts[0] if len(parts) == 3 else "2026"
             month = parts[1] if len(parts) == 3 else "10"
@@ -465,8 +466,9 @@ class handler(BaseHTTPRequestHandler):
                 "eMin": str(int(e_time[1])) if len(e_time) > 1 else "0",
                 "content": payload.get("content", "")
             }
-            if mode == "MOD" and "idx" in payload:
+            if (mode in ("MOD", "EDIT")) and "idx" in payload:
                 form_data["idx"] = str(payload["idx"])
+
 
             try:
                 encoded = urllib.parse.urlencode(form_data, encoding="euc-kr").encode("euc-kr")

@@ -1131,6 +1131,14 @@
     const initCc = item.ccAddr || '';
     const initContent = item.content || '';
 
+    // 모달 전용 참조자 상태
+    let modalSelectedCc = [];
+    if (initCc) {
+      modalSelectedCc = initCc.split(/[,;\n]+/).map(n => n.trim()).filter(Boolean);
+    }
+    let modalCcCategoryFilter = 'all';
+    let modalCcSearchQuery = '';
+
     elements.modalBody.innerHTML = `
       <form id="modalEditForm">
         <input type="hidden" id="modalIdx" value="${item.idx}">
@@ -1171,10 +1179,68 @@
             <input type="text" id="modalWriter" class="input-control" value="${escapeHtml(initWriter)}">
           </div>
         </div>
-        <div class="form-group">
-          <label>참조자</label>
-          <input type="text" id="modalCcAddr" class="input-control" value="${escapeHtml(initCc)}" placeholder="예: 권민섭, 최화열 전무이사">
+
+        <!-- 참조자 주소록 선택 UI (단건 등록 탭과 100% 동일) -->
+        <div class="form-group cc-picker-group" id="modalCcPickerGroup" style="position: relative;">
+          <div class="cc-header-row">
+            <label for="modalCcInput">참조자 (주소록 선택 및 검색)</label>
+            <div class="cc-header-actions">
+              <button type="button" class="btn-text-action" id="modalCcOpenDropdownBtn">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                  <circle cx="9" cy="7" r="4"></circle>
+                  <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                  <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                </svg>
+                주소록 명단 (<span id="modalCcTotalBadge">${state.addressBook.length}</span>명)
+              </button>
+              <button type="button" class="btn-text-action danger" id="modalCcClearAllBtn" style="${modalSelectedCc.length > 0 ? '' : 'display: none;'}">
+                전체 비우기
+              </button>
+            </div>
+          </div>
+
+          <!-- 칩(태그) 및 인라인 검색 인풋 -->
+          <div class="cc-chip-box" id="modalCcChipBox">
+            <div class="cc-chips-list" id="modalCcChipsList"></div>
+            <input type="text" id="modalCcInput" class="cc-search-input" placeholder="이름/팀 검색 또는 클릭하여 명단 선택..." autocomplete="off">
+          </div>
+
+          <!-- 실제 서버 전송용 숨김 필드 -->
+          <input type="hidden" id="modalCcAddr" value="${escapeHtml(initCc)}">
+
+          <!-- 모던 드롭다운 명단 패널 -->
+          <div class="cc-dropdown-panel" id="modalCcDropdownPanel" style="display: none; position: static; margin-top: 8px;">
+            <div class="cc-panel-header">
+              <div class="cc-search-wrapper">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <circle cx="11" cy="11" r="8"></circle>
+                  <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                </svg>
+                <input type="text" id="modalCcFilterKeyword" placeholder="이름 또는 팀명 검색..." autocomplete="off">
+              </div>
+              <div class="cc-filter-tabs">
+                <button type="button" class="cc-tab active" data-category="all" id="modalCcTabAll">전체 (<span id="modalCcCountAll">${state.addressBook.length}</span>)</button>
+                <button type="button" class="cc-tab" data-category="team" id="modalCcTabTeam">팀/부서 (<span id="modalCcCountTeam">${state.addressBook.filter(m => m.category === 'team').length}</span>)</button>
+                <button type="button" class="cc-tab" data-category="member" id="modalCcTabMember">임직원 (<span id="modalCcCountMember">${state.addressBook.filter(m => m.category !== 'team').length}</span>)</button>
+              </div>
+            </div>
+
+            <div class="cc-members-grid" id="modalCcMembersGrid">
+              <!-- 동적 로드 -->
+            </div>
+
+            <div class="cc-panel-footer">
+              <span class="cc-selection-status">선택된 참조자: <strong id="modalCcSelectedCount">0</strong>명</span>
+              <div class="cc-footer-buttons">
+                <button type="button" class="btn btn-sm btn-primary" id="modalCcCloseDropdownBtn">확인</button>
+              </div>
+            </div>
+          </div>
+
+          <small class="helper-text">※ 명단을 클릭하면 즉시 추가/해제되며, 직접 입력 후 쉼표나 엔터를 쳐도 추가됩니다.</small>
         </div>
+
         <div class="form-group">
           <label>세부 내용 <span id="modalDetailLoading" style="font-size:0.75rem; color:var(--accent-primary); display:none;">(최신 세부정보 동기화 중...)</span></label>
           <textarea id="modalContent" class="input-control textarea-control" rows="5" placeholder="세부 내용을 입력하세요.">${escapeHtml(initContent)}</textarea>
@@ -1186,6 +1252,164 @@
         </div>
       </form>
     `;
+
+    // 모달 내 참조자 픽커 이벤트 바인딩
+    const mChipsList = document.getElementById('modalCcChipsList');
+    const mSearchInput = document.getElementById('modalCcInput');
+    const mDropdownPanel = document.getElementById('modalCcDropdownPanel');
+    const mMembersGrid = document.getElementById('modalCcMembersGrid');
+    const mClearAllBtn = document.getElementById('modalCcClearAllBtn');
+    const mOpenDropdownBtn = document.getElementById('modalCcOpenDropdownBtn');
+    const mCloseDropdownBtn = document.getElementById('modalCcCloseDropdownBtn');
+    const mFilterInput = document.getElementById('modalCcFilterKeyword');
+    const mSelectedCount = document.getElementById('modalCcSelectedCount');
+
+    function renderModalCcChips() {
+      mChipsList.innerHTML = '';
+      modalSelectedCc.forEach(name => {
+        const isTeam = state.addressBook.some(m => m.name === name && m.category === 'team');
+        const chip = document.createElement('div');
+        chip.className = `cc-chip ${isTeam ? 'team' : ''}`;
+        chip.innerHTML = `
+          <span>${name}</span>
+          <span class="cc-chip-remove" title="삭제">&times;</span>
+        `;
+        chip.querySelector('.cc-chip-remove').addEventListener('click', (e) => {
+          e.stopPropagation();
+          removeModalCcMember(name);
+        });
+        mChipsList.appendChild(chip);
+      });
+
+      if (modalSelectedCc.length > 0) {
+        mClearAllBtn.style.display = 'inline-flex';
+      } else {
+        mClearAllBtn.style.display = 'none';
+      }
+      if (mSelectedCount) {
+        mSelectedCount.textContent = modalSelectedCc.length;
+      }
+    }
+
+    function renderModalCcMembersGrid() {
+      mMembersGrid.innerHTML = '';
+      const q = modalCcSearchQuery.toLowerCase();
+      const cat = modalCcCategoryFilter;
+
+      const filtered = state.addressBook.filter(m => {
+        if (cat === 'team' && m.category !== 'team') return false;
+        if (cat === 'member' && m.category === 'team') return false;
+        if (q && !m.name.toLowerCase().includes(q)) return false;
+        return true;
+      });
+
+      if (filtered.length === 0) {
+        mMembersGrid.innerHTML = '<div style="grid-column: 1/-1; text-align: center; color: var(--text-muted); padding: 1.5rem 0; font-size: 0.85rem;">검색 결과가 없습니다.</div>';
+        return;
+      }
+
+      filtered.forEach(m => {
+        const isSelected = modalSelectedCc.includes(m.name);
+        const itemEl = document.createElement('div');
+        itemEl.className = `cc-member-item ${isSelected ? 'selected' : ''}`;
+        itemEl.innerHTML = `
+          <span class="cc-member-name">${m.name}</span>
+          <div style="display: flex; align-items: center;">
+            <span class="cc-member-badge">${m.category === 'team' ? '팀' : '직원'}</span>
+            <span class="cc-check-icon">✓</span>
+          </div>
+        `;
+        itemEl.addEventListener('click', () => {
+          toggleModalCcMember(m.name);
+        });
+        mMembersGrid.appendChild(itemEl);
+      });
+    }
+
+    function toggleModalCcMember(name) {
+      if (modalSelectedCc.includes(name)) {
+        removeModalCcMember(name);
+      } else {
+        addModalCcMember(name);
+      }
+    }
+
+    function addModalCcMember(name) {
+      name = name.trim();
+      if (!name) return;
+      if (!modalSelectedCc.includes(name)) {
+        modalSelectedCc.push(name);
+        renderModalCcChips();
+        renderModalCcMembersGrid();
+      }
+    }
+
+    function removeModalCcMember(name) {
+      modalSelectedCc = modalSelectedCc.filter(n => n !== name);
+      renderModalCcChips();
+      renderModalCcMembersGrid();
+    }
+
+    function clearAllModalCcMembers() {
+      modalSelectedCc = [];
+      renderModalCcChips();
+      renderModalCcMembersGrid();
+    }
+
+    // 모달 초기 렌더링
+    renderModalCcChips();
+    renderModalCcMembersGrid();
+
+    mOpenDropdownBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      mDropdownPanel.style.display = mDropdownPanel.style.display === 'none' ? 'block' : 'none';
+      if (mDropdownPanel.style.display === 'block') {
+        renderModalCcMembersGrid();
+      }
+    });
+
+    mCloseDropdownBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      mDropdownPanel.style.display = 'none';
+    });
+
+    mClearAllBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      clearAllModalCcMembers();
+    });
+
+    // 탭 필터링
+    ['modalCcTabAll', 'modalCcTabTeam', 'modalCcTabMember'].forEach(id => {
+      const tabBtn = document.getElementById(id);
+      if (tabBtn) {
+        tabBtn.addEventListener('click', () => {
+          document.querySelectorAll('#modalCcDropdownPanel .cc-tab').forEach(t => t.classList.remove('active'));
+          tabBtn.classList.add('active');
+          modalCcCategoryFilter = tabBtn.getAttribute('data-category');
+          renderModalCcMembersGrid();
+        });
+      }
+    });
+
+    // 검색 필터링
+    mFilterInput.addEventListener('input', (e) => {
+      modalCcSearchQuery = e.target.value.trim();
+      renderModalCcMembersGrid();
+    });
+
+    // 인라인 인풋에서 입력 후 콤마/엔터 시 칩 추가
+    mSearchInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ',') {
+        e.preventDefault();
+        const val = mSearchInput.value.replace(/,/g, '').trim();
+        if (val) {
+          addModalCcMember(val);
+          mSearchInput.value = '';
+        }
+      } else if (e.key === 'Backspace' && !mSearchInput.value && modalSelectedCc.length > 0) {
+        removeModalCcMember(modalSelectedCc[modalSelectedCc.length - 1]);
+      }
+    });
 
     document.getElementById('modalCancelBtn').onclick = closeModal;
     document.getElementById('modalDeleteBtn').onclick = () => {
@@ -1199,6 +1423,15 @@
       saveBtn.disabled = true;
       saveBtn.textContent = '저장 중...';
 
+      // 레거시 인트라넷 필수 규격: 각 이름 구분 ', ' 및 마지막 끝에도 반드시 ', ' (쉼표+공백) 필수
+      let cleanCc = '';
+      if (modalSelectedCc.length > 0) {
+        cleanCc = modalSelectedCc.join(', ') + ', ';
+      } else if (mSearchInput && mSearchInput.value.trim()) {
+        const parts = mSearchInput.value.split(/[,;\n]+/).map(p => p.trim()).filter(Boolean);
+        cleanCc = parts.length > 0 ? parts.join(', ') + ', ' : '';
+      }
+
       const payload = {
         idx: item.idx,
         subject: document.getElementById('modalSubject').value.trim(),
@@ -1207,7 +1440,7 @@
         endTime: document.getElementById('modalEndTime').value,
         place: document.getElementById('modalPlace').value,
         writer: document.getElementById('modalWriter').value.trim() || state.config.writer,
-        ccAddr: document.getElementById('modalCcAddr').value.trim(),
+        ccAddr: cleanCc,
         content: document.getElementById('modalContent').value.trim(),
         sIDX: state.config.sIDX,
         cookie: state.config.cookie
@@ -1243,7 +1476,6 @@
         const subjInput = document.getElementById('modalSubject');
         const contentInput = document.getElementById('modalContent');
         const writerInput = document.getElementById('modalWriter');
-        const ccInput = document.getElementById('modalCcAddr');
         const placeSelect = document.getElementById('modalPlace');
         const startTimeInput = document.getElementById('modalStartTime');
         const endTimeInput = document.getElementById('modalEndTime');
@@ -1251,10 +1483,16 @@
         if (subjInput && detail.subject) subjInput.value = detail.subject;
         if (contentInput && detail.content !== undefined) contentInput.value = detail.content;
         if (writerInput && detail.writer) writerInput.value = detail.writer;
-        if (ccInput && detail.ccAddr) ccInput.value = detail.ccAddr;
         if (placeSelect && detail.place) placeSelect.value = detail.place;
         if (startTimeInput && detail.startTime) startTimeInput.value = detail.startTime;
         if (endTimeInput && detail.endTime) endTimeInput.value = detail.endTime;
+
+        // 참조자 동기화
+        if (detail.ccAddr) {
+          modalSelectedCc = detail.ccAddr.split(/[,;\n]+/).map(n => n.trim()).filter(Boolean);
+          renderModalCcChips();
+          renderModalCcMembersGrid();
+        }
       }
       if (loadingBadge) loadingBadge.style.display = 'none';
     } catch (e) {
@@ -1262,6 +1500,7 @@
       if (loadingBadge) loadingBadge.style.display = 'none';
     }
   }
+
 
   function closeModal() {
     elements.scheduleModal.style.display = 'none';
