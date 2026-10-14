@@ -612,6 +612,15 @@
     submitBtn.disabled = true;
     submitBtn.textContent = '등록 진행 중...';
 
+    // 레거시 인트라넷 필수 규격: 각 이름 구분 ', ' 및 마지막 끝에도 반드시 ', ' (쉼표+공백) 필수
+    let cleanCc = '';
+    if (state.selectedCcList && state.selectedCcList.length > 0) {
+      cleanCc = state.selectedCcList.join(', ') + ', ';
+    } else if (elements.regCcAddr && elements.regCcAddr.value) {
+      const parts = elements.regCcAddr.value.split(/[,;\n]+/).map(p => p.trim()).filter(Boolean);
+      cleanCc = parts.length > 0 ? parts.join(', ') + ', ' : '';
+    }
+
     const payload = {
       date: elements.regDate.value,
       startTime: elements.regStartTime.value,
@@ -619,11 +628,12 @@
       place: elements.regPlace.value,
       writer: elements.regWriter.value || state.config.writer,
       subject: elements.regSubject.value.trim(),
-      ccAddr: elements.regCcAddr.value.trim(),
+      ccAddr: cleanCc,
       content: elements.regContent.value.trim(),
       sIDX: state.config.sIDX,
       cookie: state.config.cookie
     };
+
 
     try {
       const res = await apiCall('/register', 'POST', payload);
@@ -932,7 +942,12 @@
     item.place = placeCode;
     item.placeText = placeText;
     item.subject = elements.editBulkSubject.value.trim();
-    item.ccAddr = elements.editBulkCc.value.trim();
+    let cleanEditCc = elements.editBulkCc.value.trim();
+    if (cleanEditCc) {
+      const parts = cleanEditCc.split(/[,;\n]+/).map(p => p.trim()).filter(Boolean);
+      cleanEditCc = parts.length > 0 ? parts.join(', ') + ', ' : '';
+    }
+    item.ccAddr = cleanEditCc;
     item.content = elements.editBulkContent.value.trim();
 
     closeBulkEditModal();
@@ -999,6 +1014,12 @@
       elements.bulkProgressFill.style.width = `${percent}%`;
       elements.bulkProgressText.textContent = `등록 진행 중: ${i + 1} / ${targets.length}`;
 
+      let cleanBulkCc = (item.ccAddr || '').trim();
+      if (cleanBulkCc) {
+        const parts = cleanBulkCc.split(/[,;\n]+/).map(p => p.trim()).filter(Boolean);
+        cleanBulkCc = parts.length > 0 ? parts.join(', ') + ', ' : '';
+      }
+
       const payload = {
         date: item.date,
         startTime: item.startTime,
@@ -1007,10 +1028,11 @@
         writer: state.config.writer,
         subject: item.subject,
         content: item.content,
-        ccAddr: item.ccAddr,
+        ccAddr: cleanBulkCc,
         sIDX: state.config.sIDX,
         cookie: state.config.cookie
       };
+
 
       try {
         const res = await apiCall('/register', 'POST', payload);

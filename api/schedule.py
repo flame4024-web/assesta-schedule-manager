@@ -88,6 +88,21 @@ def normalize_cookie(raw_cookie, sidx="669"):
     return "; ".join([f"{k}={v}" for k, v in merged.items()])
 
 
+def normalize_cc_addr(cc_str):
+    """
+    레거시 ASP 인트라넷 schedule_proc.asp 필수 규격:
+    각 이름/팀 명칭 사이에 ', '가 들어가고, 마지막 끝에도 반드시 ', ' (쉼표+공백)이 필수임.
+    끝에 공백이 없거나 쉼표가 없으면 OLE DB SQL 구문 오류(500)가 발생함.
+    """
+    if not cc_str:
+        return ""
+    parts = [p.strip() for p in re.split(r"[,;\n]+", str(cc_str)) if p.strip()]
+    if not parts:
+        return ""
+    return ", ".join(parts) + ", "
+
+
+
 def make_request(url, method="GET", data=None, headers=None, encoding="euc-kr"):
     headers = headers or {}
     if requests is not None:
@@ -432,6 +447,8 @@ class handler(BaseHTTPRequestHandler):
             if place_val in PLACE_MAP:
                 place_val = PLACE_MAP[place_val]
 
+            cc_addr_val = normalize_cc_addr(payload.get("ccAddr", ""))
+
             form_data = {
                 "mode": mode,
                 "sIDX": sidx,
@@ -440,7 +457,7 @@ class handler(BaseHTTPRequestHandler):
                 "day": str(int(day)),
                 "subject": payload.get("subject", ""),
                 "writer": payload.get("writer", "권민섭"),
-                "ccAddr": payload.get("ccAddr", ""),
+                "ccAddr": cc_addr_val,
                 "place": place_val,
                 "sHour": str(int(s_time[0])) if s_time else "9",
                 "sMin": str(int(s_time[1])) if len(s_time) > 1 else "0",
@@ -454,6 +471,26 @@ class handler(BaseHTTPRequestHandler):
             try:
                 encoded = urllib.parse.urlencode(form_data, encoding="euc-kr").encode("euc-kr")
                 status, text = make_request(f"{INTRANET_BASE}/schedule/schedule_proc.asp", method="POST", data=encoded, headers=headers)
+
+                # 1) HTTP 비정상 코드 (500 내부 서버 오류 등)
+                if status != 200:
+                    self._send_json(status, {
+                        "success": False,
+                        "message": f"인트라넷 처리 실패 (HTTP {status}) - 참조자 형식 또는 권한을 확인하세요.",
+                        "raw": text[:300]
+                    })
+                    return
+
+                # 2) 본문에 SQL 구문 에러 또는 오류 문자열 포함된 경우
+                if any(err_kw in text for err_kw in ["Microsoft OLE DB", "SQL Server", "내부 서버 오류", "오류 유형:", "처리방법을 알수 없습니다"]):
+                    self._send_json(500, {
+                        "success": False,
+                        "message": "인트라넷 SQL 서버 구문 오류 - 참조자 이름/형식이 잘못되었습니다.",
+                        "raw": text[:300]
+                    })
+                    return
+
+                # 3) 자바스크립트 alert 메시지 파싱
                 if "alert(" in text:
                     m = re.search(r"alert\(['\"](.*?)['\"]\)", text)
                     alert_msg = m.group(1) if m else "실패"
@@ -461,11 +498,18 @@ class handler(BaseHTTPRequestHandler):
                         self._send_json(200, {"success": True, "message": alert_msg, "data": form_data})
                     else:
                         self._send_json(400, {"success": False, "message": alert_msg, "raw": text[:200]})
-                else:
+                    return
+
+                # 4) 정상 처리 스크립트 (window.close 또는 location.reload)
+                if "window.close" in text or "location.reload" in text:
                     self._send_json(200, {"success": True, "message": "저장 완료", "data": form_data})
+                    return
+
+                self._send_json(200, {"success": True, "message": "저장 요청 완료", "data": form_data})
             except Exception as e:
                 self._send_json(500, {"success": False, "error": str(e)})
             return
+
 
         if path.endswith("/delete"):
             idx = str(payload.get("idx", ""))
